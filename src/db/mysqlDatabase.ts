@@ -1,7 +1,20 @@
 import mysql from 'mysql2/promise';
 import dotenv from 'dotenv';
-import { Employee, PayrollPeriod, LeaveRecord, UserAccount, AuditLogItem, EmployeeSchedule } from '../types';
-import { initialEmployees, initialPayrollPeriods, initialLeaves, initialUsers, initialAuditLogs } from './seedData';
+import path from 'path';
+import fs from 'fs';
+import { 
+  Employee, 
+  PayrollPeriod, 
+  LeaveRecord, 
+  UserAccount, 
+  AuditLogItem, 
+  EmployeeSchedule,
+  Customer,
+  Invoice,
+  Payment,
+  GeneralLedgerEntry,
+  TimeRecord
+} from '../types';
 
 dotenv.config();
 
@@ -162,6 +175,109 @@ export class MySQLDatabase {
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
       `);
 
+      // 8. Create Customers Table
+      await connection.query(`
+        CREATE TABLE IF NOT EXISTS customers (
+          id VARCHAR(100) PRIMARY KEY,
+          name VARCHAR(255) NOT NULL,
+          customerName VARCHAR(255),
+          phone VARCHAR(50),
+          email VARCHAR(150),
+          billingAddress TEXT,
+          shippingAddress TEXT,
+          status ENUM('Active', 'Inactive') NOT NULL DEFAULT 'Active',
+          notes TEXT,
+          aliasesJson JSON,
+          balance DECIMAL(12,2) DEFAULT 0.00,
+          createdAt VARCHAR(50)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+      `);
+
+      // 9. Create Invoices Table
+      await connection.query(`
+        CREATE TABLE IF NOT EXISTS invoices (
+          id VARCHAR(100) PRIMARY KEY,
+          customerId VARCHAR(100) NOT NULL,
+          customerName VARCHAR(255),
+          customerEmail VARCHAR(150),
+          number VARCHAR(100) NOT NULL,
+          terms VARCHAR(50) DEFAULT 'Due on receipt',
+          date DATE NOT NULL,
+          dueDate DATE NOT NULL,
+          itemsJson JSON,
+          memo TEXT,
+          amount DECIMAL(12,2) DEFAULT 0.00,
+          paidAmount DECIMAL(12,2) DEFAULT 0.00,
+          balance DECIMAL(12,2) DEFAULT 0.00,
+          status ENUM('Paid', 'Owing') DEFAULT 'Owing',
+          createdAt VARCHAR(50),
+          INDEX idx_customer (customerId)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+      `);
+
+      // 10. Create Payments Table
+      await connection.query(`
+        CREATE TABLE IF NOT EXISTS payments (
+          id VARCHAR(100) PRIMARY KEY,
+          customerId VARCHAR(100) NOT NULL,
+          customerName VARCHAR(255),
+          invoiceId VARCHAR(100),
+          amount DECIMAL(12,2) DEFAULT 0.00,
+          date DATE NOT NULL,
+          method VARCHAR(100) DEFAULT 'Bank Transfer',
+          reference VARCHAR(100),
+          note TEXT,
+          createdAt VARCHAR(50),
+          INDEX idx_pay_customer (customerId)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+      `);
+
+      // 11. Create General Ledger Table
+      await connection.query(`
+        CREATE TABLE IF NOT EXISTS general_ledger (
+          id VARCHAR(100) PRIMARY KEY,
+          date DATE NOT NULL,
+          type VARCHAR(100) NOT NULL,
+          number VARCHAR(100),
+          name VARCHAR(255),
+          memo TEXT,
+          account VARCHAR(200),
+          debit DECIMAL(12,2) DEFAULT 0.00,
+          credit DECIMAL(12,2) DEFAULT 0.00,
+          source VARCHAR(100),
+          balance DECIMAL(12,2),
+          INDEX idx_gl_date (date),
+          INDEX idx_gl_name (name)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+      `);
+
+      // 12. Create Time Records Table (For Staff Clock In / Clock Out & Hours Export)
+      await connection.query(`
+        CREATE TABLE IF NOT EXISTS time_records (
+          id VARCHAR(50) PRIMARY KEY,
+          userId VARCHAR(50) NOT NULL,
+          employeeId VARCHAR(50),
+          employeeName VARCHAR(200) NOT NULL,
+          clockIn VARCHAR(100) NOT NULL,
+          clockOut VARCHAR(100),
+          totalHours DECIMAL(6,2) DEFAULT 0.00,
+          status ENUM('ClockedIn', 'ClockedOut') NOT NULL DEFAULT 'ClockedIn',
+          notes TEXT,
+          createdAt VARCHAR(100),
+          INDEX idx_user_time (userId),
+          INDEX idx_emp_time (employeeId)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+      `);
+
+      // 13. Create App Settings & Workspace Notes Table
+      await connection.query(`
+        CREATE TABLE IF NOT EXISTS app_settings (
+          settingKey VARCHAR(100) PRIMARY KEY,
+          settingValue LONGTEXT,
+          updatedAt VARCHAR(100)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+      `);
+
       console.log('✅ All MySQL tables created/verified successfully!');
       connection.release();
 
@@ -175,15 +291,111 @@ export class MySQLDatabase {
 
   private async seedInitialData() {
     try {
-      // Check & Seed Super Admin User if table is completely empty
-      const [usersRows]: any = await pool.query('SELECT COUNT(*) as count FROM users');
-      if (usersRows[0].count === 0) {
-        console.log('🌱 Seeding Super Admin user into MySQL...');
+      // Check & Seed Super Admin, Admin, and Staff Users
+      const defaultUsers = [
+        {
+          id: 'usr-1',
+          username: 'admin',
+          displayName: 'Administrator',
+          email: 'operations@centraldispatch.bm',
+          role: 'admin',
+          status: 'Active',
+          lastLogin: '2026-09-10 10:30 AM',
+          createdAt: '2026-01-01'
+        },
+        {
+          id: 'usr-2',
+          username: 'superadmin',
+          displayName: 'Super Admin',
+          email: 'admin@centraldispatch.bm',
+          role: 'superadmin',
+          status: 'Active',
+          lastLogin: '2026-09-10 12:00 PM',
+          createdAt: '2026-01-01'
+        },
+        {
+          id: 'usr-3',
+          username: 'staff',
+          displayName: 'John Doe (Staff)',
+          email: 'johndoe@centraldispatch.bm',
+          role: 'staff',
+          status: 'Active',
+          lastLogin: '2026-09-10 08:45 AM',
+          createdAt: '2026-01-01'
+        }
+      ];
+
+      for (const u of defaultUsers) {
         await pool.query(
-          'INSERT INTO users (id, username, displayName, email, role, status, lastLogin, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-          ['usr-2', 'superadmin', 'Super Admin', 'admin@centraldispatch.bm', 'superadmin', 'Active', '2026-09-10 12:00 PM', '2026-01-01']
+          `INSERT INTO users (id, username, displayName, email, password, role, status, lastLogin, createdAt)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+           ON DUPLICATE KEY UPDATE role = VALUES(role), status = VALUES(status)`,
+          [u.id, u.username, u.displayName, u.email, 'ChangeMe123!', u.role, u.status, u.lastLogin, u.createdAt]
         );
       }
+      console.log('✅ Default role users (superadmin, admin, staff) verified in MySQL!');
+
+      // Check & Seed Imported Accounting Customers & General Ledger if empty
+      const [custRows]: any = await pool.query('SELECT COUNT(*) as count FROM customers');
+      if (custRows[0].count === 0) {
+        const dataPath = path.resolve(__dirname, 'importedAccountingData.json');
+        if (fs.existsSync(dataPath)) {
+          console.log('🌱 Seeding 782 Customers & GL Transactions into MySQL...');
+          const raw = JSON.parse(fs.readFileSync(dataPath, 'utf8'));
+          
+          if (raw.customers && Array.isArray(raw.customers)) {
+            for (const c of raw.customers) {
+              await pool.query(
+                `INSERT INTO customers (id, name, customerName, phone, email, billingAddress, shippingAddress, status, notes, aliasesJson, balance, createdAt)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 ON DUPLICATE KEY UPDATE name=VALUES(name)`,
+                [
+                  c.id,
+                  c.name,
+                  c.customerName || c.name,
+                  c.phone || '',
+                  c.email || '',
+                  c.billingAddress || '',
+                  c.shippingAddress || '',
+                  c.status || 'Active',
+                  c.notes || '',
+                  JSON.stringify(c.aliases || []),
+                  c.balance || 0,
+                  c.createdAt || new Date().toISOString()
+                ]
+              );
+            }
+            console.log(`✅ Seeded ${raw.customers.length} Customers!`);
+          }
+
+          if (raw.generalLedger && Array.isArray(raw.generalLedger)) {
+            let glCount = 0;
+            for (const gl of raw.generalLedger) {
+              const glId = gl.id || ('gl-' + (++glCount));
+              await pool.query(
+                `INSERT INTO general_ledger (id, date, type, number, name, memo, account, debit, credit, source, balance)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 ON DUPLICATE KEY UPDATE name=VALUES(name)`,
+                [
+                  glId,
+                  gl.date || '2026-01-01',
+                  gl.type || 'General',
+                  gl.number || '',
+                  gl.name || '',
+                  gl.memo || '',
+                  gl.account || 'Accounts Receivable',
+                  gl.debit || 0,
+                  gl.credit || 0,
+                  gl.source || 'General Ledger Import',
+                  gl.balance || null
+                ]
+              );
+            }
+            console.log(`✅ Seeded ${raw.generalLedger.length} General Ledger entries!`);
+          }
+        }
+      }
+
       console.log('✅ MySQL initial verification complete!');
     } catch (err) {
       console.error('❌ Error seeding MySQL data:', err);
@@ -400,6 +612,409 @@ export class MySQLDatabase {
       [log.id, log.action, log.module, log.user, log.role, log.timestamp, log.details || '']
     );
   }
+
+  // ==========================================================
+  // CUSTOMER ACCOUNTING, INVOICES, PAYMENTS & GL
+  // ==========================================================
+  
+  public async getCustomers(): Promise<Customer[]> {
+    const [rows]: any = await pool.query('SELECT * FROM customers ORDER BY name ASC');
+    return rows.map((r: any) => ({
+      ...r,
+      balance: Number(r.balance || 0),
+      aliases: typeof r.aliasesJson === 'string' ? JSON.parse(r.aliasesJson) : (r.aliasesJson || [])
+    }));
+  }
+
+  public async getCustomerById(id: string): Promise<Customer | null> {
+    const [rows]: any = await pool.query('SELECT * FROM customers WHERE id = ? OR name = ?', [id, id]);
+    if (rows.length === 0) return null;
+    const r = rows[0];
+    return {
+      ...r,
+      balance: Number(r.balance || 0),
+      aliases: typeof r.aliasesJson === 'string' ? JSON.parse(r.aliasesJson) : (r.aliasesJson || [])
+    };
+  }
+
+  public async saveCustomer(c: Customer): Promise<Customer> {
+    const aliasesStr = JSON.stringify(c.aliases || []);
+    await pool.query(
+      `INSERT INTO customers (id, name, customerName, phone, email, billingAddress, shippingAddress, status, notes, aliasesJson, balance, createdAt)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       ON DUPLICATE KEY UPDATE name=VALUES(name), customerName=VALUES(customerName), phone=VALUES(phone), email=VALUES(email),
+       billingAddress=VALUES(billingAddress), shippingAddress=VALUES(shippingAddress), status=VALUES(status),
+       notes=VALUES(notes), aliasesJson=VALUES(aliasesJson), balance=VALUES(balance)`,
+      [
+        c.id, c.name, c.customerName || c.name, c.phone || '', c.email || '',
+        c.billingAddress || '', c.shippingAddress || '', c.status || 'Active',
+        c.notes || '', aliasesStr, c.balance || 0, c.createdAt || new Date().toISOString()
+      ]
+    );
+    return c;
+  }
+
+  public async deleteCustomer(id: string): Promise<boolean> {
+    await pool.query('DELETE FROM customers WHERE id = ?', [id]);
+    return true;
+  }
+
+  public async getInvoices(customerId?: string): Promise<Invoice[]> {
+    let sql = 'SELECT * FROM invoices';
+    const params: any[] = [];
+    if (customerId) {
+      sql += ' WHERE customerId = ?';
+      params.push(customerId);
+    }
+    sql += ' ORDER BY date DESC, number DESC';
+    const [rows]: any = await pool.query(sql, params);
+    return rows.map((r: any) => ({
+      ...r,
+      date: this.formatDateStr(r.date),
+      dueDate: this.formatDateStr(r.dueDate),
+      amount: Number(r.amount || 0),
+      paidAmount: Number(r.paidAmount || 0),
+      balance: Number(r.balance || 0),
+      items: typeof r.itemsJson === 'string' ? JSON.parse(r.itemsJson) : (r.itemsJson || [])
+    }));
+  }
+
+  public async getInvoiceById(id: string): Promise<Invoice | null> {
+    const [rows]: any = await pool.query('SELECT * FROM invoices WHERE id = ? OR number = ?', [id, id]);
+    if (rows.length === 0) return null;
+    const r = rows[0];
+    return {
+      ...r,
+      date: this.formatDateStr(r.date),
+      dueDate: this.formatDateStr(r.dueDate),
+      amount: Number(r.amount || 0),
+      paidAmount: Number(r.paidAmount || 0),
+      balance: Number(r.balance || 0),
+      items: typeof r.itemsJson === 'string' ? JSON.parse(r.itemsJson) : (r.itemsJson || [])
+    };
+  }
+
+  public async saveInvoice(inv: Invoice): Promise<Invoice> {
+    const itemsStr = JSON.stringify(inv.items || []);
+    await pool.query(
+      `INSERT INTO invoices (id, customerId, customerName, customerEmail, number, terms, date, dueDate, itemsJson, memo, amount, paidAmount, balance, status, createdAt)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       ON DUPLICATE KEY UPDATE customerName=VALUES(customerName), customerEmail=VALUES(customerEmail),
+       terms=VALUES(terms), date=VALUES(date), dueDate=VALUES(dueDate), itemsJson=VALUES(itemsJson),
+       memo=VALUES(memo), amount=VALUES(amount), paidAmount=VALUES(paidAmount), balance=VALUES(balance), status=VALUES(status)`,
+      [
+        inv.id, inv.customerId, inv.customerName || '', inv.customerEmail || '', inv.number,
+        inv.terms || 'Due on receipt', inv.date, inv.dueDate, itemsStr, inv.memo || '',
+        inv.amount || 0, inv.paidAmount || 0, inv.balance || 0, inv.status || 'Owing',
+        inv.createdAt || new Date().toISOString()
+      ]
+    );
+    return inv;
+  }
+
+  public async deleteInvoice(id: string): Promise<boolean> {
+    await pool.query('DELETE FROM invoices WHERE id = ?', [id]);
+    return true;
+  }
+
+  public async getPayments(customerId?: string): Promise<Payment[]> {
+    let sql = 'SELECT * FROM payments';
+    const params: any[] = [];
+    if (customerId) {
+      sql += ' WHERE customerId = ?';
+      params.push(customerId);
+    }
+    sql += ' ORDER BY date DESC';
+    const [rows]: any = await pool.query(sql, params);
+    return rows.map((r: any) => ({
+      ...r,
+      date: this.formatDateStr(r.date),
+      amount: Number(r.amount || 0)
+    }));
+  }
+
+  public async savePayment(p: Payment): Promise<Payment> {
+    await pool.query(
+      `INSERT INTO payments (id, customerId, customerName, invoiceId, amount, date, method, reference, note, createdAt)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       ON DUPLICATE KEY UPDATE customerName=VALUES(customerName), invoiceId=VALUES(invoiceId), amount=VALUES(amount),
+       date=VALUES(date), method=VALUES(method), reference=VALUES(reference), note=VALUES(note)`,
+      [
+        p.id, p.customerId, p.customerName || '', p.invoiceId || null, p.amount || 0,
+        p.date, p.method || 'Bank Transfer', p.reference || '', p.note || '',
+        p.createdAt || new Date().toISOString()
+      ]
+    );
+    return p;
+  }
+
+  public async deletePayment(id: string): Promise<boolean> {
+    await pool.query('DELETE FROM payments WHERE id = ?', [id]);
+    return true;
+  }
+
+  public async getGeneralLedger(filter?: { startDate?: string; endDate?: string; customerName?: string; account?: string; type?: string }): Promise<GeneralLedgerEntry[]> {
+    let sql = 'SELECT * FROM general_ledger WHERE 1=1';
+    const params: any[] = [];
+
+    if (filter?.startDate) {
+      sql += ' AND date >= ?';
+      params.push(filter.startDate);
+    }
+    if (filter?.endDate) {
+      sql += ' AND date <= ?';
+      params.push(filter.endDate);
+    }
+    if (filter?.customerName) {
+      sql += ' AND name LIKE ?';
+      params.push(`%${filter.customerName}%`);
+    }
+    if (filter?.account) {
+      sql += ' AND account = ?';
+      params.push(filter.account);
+    }
+    if (filter?.type) {
+      sql += ' AND type = ?';
+      params.push(filter.type);
+    }
+
+    sql += ' ORDER BY date DESC, id DESC';
+    const [rows]: any = await pool.query(sql, params);
+    return rows.map((r: any) => ({
+      ...r,
+      date: this.formatDateStr(r.date),
+      debit: Number(r.debit || 0),
+      credit: Number(r.credit || 0),
+      balance: r.balance != null ? Number(r.balance) : null
+    }));
+  }
+
+  public async saveGeneralLedgerEntry(entry: GeneralLedgerEntry): Promise<GeneralLedgerEntry> {
+    const id = entry.id || ('gl-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6));
+    await pool.query(
+      `INSERT INTO general_ledger (id, date, type, number, name, memo, account, debit, credit, source, balance)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       ON DUPLICATE KEY UPDATE date=VALUES(date), type=VALUES(type), number=VALUES(number), name=VALUES(name),
+       memo=VALUES(memo), account=VALUES(account), debit=VALUES(debit), credit=VALUES(credit), balance=VALUES(balance)`,
+      [
+        id, entry.date, entry.type, entry.number || '', entry.name || '',
+        entry.memo || '', entry.account || 'Accounts Receivable', entry.debit || 0,
+        entry.credit || 0, entry.source || 'Manual Entry', entry.balance || null
+      ]
+    );
+    return { ...entry, id };
+  }
+
+  // ==========================================================
+  // TIME RECORDS / MY TIME (For Staff Clock In/Out & Export)
+  // ==========================================================
+
+  public async getTimeRecords(userId?: string): Promise<TimeRecord[]> {
+    let sql = 'SELECT * FROM time_records';
+    const params: any[] = [];
+    if (userId) {
+      sql += ' WHERE userId = ? OR employeeId = ?';
+      params.push(userId, userId);
+    }
+    sql += ' ORDER BY clockIn DESC';
+    const [rows]: any = await pool.query(sql, params);
+    return rows.map((r: any) => ({
+      ...r,
+      totalHours: Number(r.totalHours || 0)
+    }));
+  }
+
+  public async getLatestTimeRecord(userId: string): Promise<TimeRecord | null> {
+    const [rows]: any = await pool.query(
+      'SELECT * FROM time_records WHERE userId = ? OR employeeId = ? ORDER BY clockIn DESC LIMIT 1',
+      [userId, userId]
+    );
+    if (rows.length === 0) return null;
+    const r = rows[0];
+    return {
+      ...r,
+      totalHours: Number(r.totalHours || 0)
+    };
+  }
+
+  public async clockIn(userId: string, employeeName: string, employeeId?: string, notes?: string): Promise<TimeRecord> {
+    // Check if already clocked in
+    const latest = await this.getLatestTimeRecord(userId);
+    if (latest && latest.status === 'ClockedIn') {
+      return latest;
+    }
+
+    const id = `time-${Date.now()}`;
+    const now = new Date().toISOString();
+    const newRecord: TimeRecord = {
+      id,
+      userId,
+      employeeId: employeeId || userId,
+      employeeName,
+      clockIn: now,
+      totalHours: 0,
+      status: 'ClockedIn',
+      notes: notes || '',
+      createdAt: now
+    };
+
+    await pool.query(
+      `INSERT INTO time_records (id, userId, employeeId, employeeName, clockIn, totalHours, status, notes, createdAt)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [newRecord.id, newRecord.userId, newRecord.employeeId, newRecord.employeeName, newRecord.clockIn, 0, 'ClockedIn', newRecord.notes, newRecord.createdAt]
+    );
+
+    return newRecord;
+  }
+
+  public async clockOut(userId: string, notes?: string): Promise<TimeRecord | null> {
+    const latest = await this.getLatestTimeRecord(userId);
+    if (!latest || latest.status !== 'ClockedIn') {
+      return latest;
+    }
+
+    const now = new Date().toISOString();
+    const clockInDate = new Date(latest.clockIn);
+    const clockOutDate = new Date(now);
+    const diffMs = clockOutDate.getTime() - clockInDate.getTime();
+    const hours = Math.max(0.01, Number((diffMs / (1000 * 60 * 60)).toFixed(2)));
+
+    const updatedNotes = notes ? (latest.notes ? `${latest.notes} | ${notes}` : notes) : latest.notes;
+
+    await pool.query(
+      `UPDATE time_records SET clockOut = ?, totalHours = ?, status = 'ClockedOut', notes = ? WHERE id = ?`,
+      [now, hours, updatedNotes || '', latest.id]
+    );
+
+    return {
+      ...latest,
+      clockOut: now,
+      totalHours: hours,
+      status: 'ClockedOut',
+      notes: updatedNotes
+    };
+  }
+
+  // ==========================================================
+  // APP SETTINGS, SCHEDULE NOTES & BACKUP/RESTORE
+  // ==========================================================
+
+  public async getSetting(key: string): Promise<string | null> {
+    const [rows]: any = await pool.query('SELECT settingValue FROM app_settings WHERE settingKey = ?', [key]);
+    if (rows.length === 0) return null;
+    return rows[0].settingValue;
+  }
+
+  public async saveSetting(key: string, value: string): Promise<void> {
+    const now = new Date().toISOString();
+    await pool.query(
+      `INSERT INTO app_settings (settingKey, settingValue, updatedAt)
+       VALUES (?, ?, ?)
+       ON DUPLICATE KEY UPDATE settingValue = VALUES(settingValue), updatedAt = VALUES(updatedAt)`,
+      [key, value, now]
+    );
+  }
+
+  public async getScheduleNote(): Promise<string> {
+    const note = await this.getSetting('workspace_schedule_note');
+    return note || '';
+  }
+
+  public async saveScheduleNote(note: string): Promise<void> {
+    await this.saveSetting('workspace_schedule_note', note);
+  }
+
+  public async backupAllData(): Promise<any> {
+    const [users]: any = await pool.query('SELECT * FROM users');
+    const [employees]: any = await pool.query('SELECT * FROM employees');
+    const [payroll_periods]: any = await pool.query('SELECT * FROM payroll_periods');
+    const [employee_payroll_items]: any = await pool.query('SELECT * FROM employee_payroll_items');
+    const [leave_records]: any = await pool.query('SELECT * FROM leave_records');
+    const [schedules]: any = await pool.query('SELECT * FROM schedules');
+    const [customers]: any = await pool.query('SELECT * FROM customers');
+    const [invoices]: any = await pool.query('SELECT * FROM invoices');
+    const [payments]: any = await pool.query('SELECT * FROM payments');
+    const [general_ledger]: any = await pool.query('SELECT * FROM general_ledger');
+    const [time_records]: any = await pool.query('SELECT * FROM time_records');
+    const [app_settings]: any = await pool.query('SELECT * FROM app_settings');
+
+    return {
+      format: 'Central Dispatch Complete App Backup',
+      version: 1,
+      createdAt: new Date().toISOString(),
+      database: {
+        users,
+        employees,
+        payroll_periods,
+        employee_payroll_items,
+        leave_records,
+        schedules,
+        customers,
+        invoices,
+        payments,
+        general_ledger,
+        time_records,
+        app_settings
+      }
+    };
+  }
+
+  public async restoreAllData(backupData: any): Promise<void> {
+    if (!backupData || !backupData.database) {
+      throw new Error('Invalid backup file format');
+    }
+    const db = backupData.database;
+
+    // Restore customers if present
+    if (Array.isArray(db.customers)) {
+      for (const c of db.customers) {
+        await this.saveCustomer(c);
+      }
+    }
+
+    // Restore employees if present
+    if (Array.isArray(db.employees)) {
+      for (const e of db.employees) {
+        await this.saveEmployee(e);
+      }
+    }
+
+    // Restore invoices if present
+    if (Array.isArray(db.invoices)) {
+      for (const inv of db.invoices) {
+        await this.saveInvoice(inv);
+      }
+    }
+
+    // Restore payments if present
+    if (Array.isArray(db.payments)) {
+      for (const p of db.payments) {
+        await this.savePayment(p);
+      }
+    }
+
+    // Restore schedules if present
+    if (Array.isArray(db.schedules)) {
+      for (const s of db.schedules) {
+        await this.saveSchedule(s);
+      }
+    }
+
+    // Restore leaves if present
+    if (Array.isArray(db.leave_records)) {
+      for (const l of db.leave_records) {
+        await this.saveLeave(l);
+      }
+    }
+
+    // Restore app_settings if present
+    if (Array.isArray(db.app_settings)) {
+      for (const st of db.app_settings) {
+        await this.saveSetting(st.settingKey, st.settingValue);
+      }
+    }
+  }
 }
 
 export const mySQLDb = new MySQLDatabase();
+

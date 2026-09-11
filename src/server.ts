@@ -1,14 +1,28 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import authRoutes from './routes/authRoutes';
-import userRoutes from './routes/userRoutes';
-import employeeRoutes from './routes/employeeRoutes';
-import scheduleRoutes from './routes/scheduleRoutes';
-import leaveRoutes from './routes/leaveRoutes';
+import dashboardRoutes from './routes/dashboardRoutes';
+import employeesRoutes from './routes/employeesRoutes';
 import payrollRoutes from './routes/payrollRoutes';
-import reportRoutes from './routes/reportRoutes';
+import leaveCalendarsRoutes from './routes/leaveCalendarsRoutes';
+import staffContactDetailsRoutes from './routes/staffContactDetailsRoutes';
+import weeklySchedulesRoutes from './routes/weeklySchedulesRoutes';
+import payrollReportsRoutes from './routes/payrollReportsRoutes';
+import auditReportsRoutes from './routes/auditReportsRoutes';
+import payslipsRoutes from './routes/payslipsRoutes';
+import accountsOverviewRoutes from './routes/accountsOverviewRoutes';
+import customersAndLedgersRoutes from './routes/customersAndLedgersRoutes';
+import createInvoiceRoutes from './routes/createInvoiceRoutes';
+import recordPaymentRoutes from './routes/recordPaymentRoutes';
+import arAgingRoutes from './routes/arAgingRoutes';
+import generalLedgerRoutes from './routes/generalLedgerRoutes';
+import permissionsRoutes from './routes/permissionsRoutes';
+import userAccountsRoutes from './routes/userAccountsRoutes';
+import settingsRoutes from './routes/settingsRoutes';
+import myTimeRoutes from './routes/myTimeRoutes';
+import authRoutes from './routes/authRoutes';
 import emailRoutes from './routes/emailRoutes';
+import accountingRoutes from './routes/accountingRoutes';
 import { errorHandler } from './middleware/errorHandler';
 import { mySQLDb } from './db/mysqlDatabase';
 
@@ -34,15 +48,89 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// API Routes
-app.use('/api/auth', authRoutes);
-app.use('/api/users', userRoutes);
-app.use('/api/employees', employeeRoutes);
-app.use('/api/schedules', scheduleRoutes);
-app.use('/api/leave', leaveRoutes);
+// =======================================================
+// 1. WORKSPACE MENU REST APIS (Named after each menu)
+// =======================================================
+// Menu: "Dashboard"
+app.use('/api/dashboard', dashboardRoutes);
+
+// Menu: "Employees"
+app.use('/api/employees', employeesRoutes);
+
+// Menu: "Payroll"
 app.use('/api/payroll', payrollRoutes);
-app.use('/api/reports', reportRoutes);
+
+// Menu: "Leave Calendars"
+app.use('/api/leave-calendars', leaveCalendarsRoutes);
+app.use('/api/leave', leaveCalendarsRoutes);
+
+// Menu: "Staff Contact Details"
+app.use('/api/staff-contact-details', staffContactDetailsRoutes);
+app.use('/api/contacts', staffContactDetailsRoutes);
+
+// Menu: "Weekly Schedules"
+app.use('/api/weekly-schedules', weeklySchedulesRoutes);
+app.use('/api/schedules', weeklySchedulesRoutes);
+
+// Menu: "Payroll Reports"
+app.use('/api/payroll-reports', payrollReportsRoutes);
+app.use('/api/reports', payrollReportsRoutes);
+
+// Menu: "Audit Reports"
+app.use('/api/audit-reports', auditReportsRoutes);
+app.use('/api/audit', auditReportsRoutes);
+
+// Menu: "Payslips"
+app.use('/api/payslips', payslipsRoutes);
+
+// Menu: "My Time" / Time Records
+app.use('/api/my-time', myTimeRoutes);
+app.use('/api/time-records', myTimeRoutes);
+
+// =======================================================
+// 2. CUSTOMERS & ACCOUNTS MENU REST APIS (Named after each menu)
+// =======================================================
+// Menu: "Accounts Overview"
+app.use('/api/accounts-overview', accountsOverviewRoutes);
+app.use('/api/accounts', accountsOverviewRoutes);
+
+// Menu: "Customers & Ledgers"
+app.use('/api/customers-and-ledgers', customersAndLedgersRoutes);
+app.use('/api/customers', customersAndLedgersRoutes);
+
+// Menu: "Create Invoice"
+app.use('/api/create-invoice', createInvoiceRoutes);
+app.use('/api/invoices', createInvoiceRoutes);
+
+// Menu: "Record Payment"
+app.use('/api/record-payment', recordPaymentRoutes);
+app.use('/api/payments', recordPaymentRoutes);
+
+// Menu: "A/R Aging"
+app.use('/api/ar-aging', arAgingRoutes);
+app.use('/api/aging', arAgingRoutes);
+
+// Menu: "General Ledger"
+app.use('/api/general-ledger', generalLedgerRoutes);
+app.use('/api/ledger', generalLedgerRoutes);
+
+// =======================================================
+// 3. ADMINISTRATION & SYSTEM REST APIS
+// =======================================================
+// Menu: "Permissions"
+app.use('/api/permissions', permissionsRoutes);
+
+// Menu: "User Accounts"
+app.use('/api/user-accounts', userAccountsRoutes);
+app.use('/api/users', userAccountsRoutes);
+
+// Menu: "Settings"
+app.use('/api/settings', settingsRoutes);
+
+// System: Auth & Email
+app.use('/api/auth', authRoutes);
 app.use('/api/email', emailRoutes);
+app.use('/api/accounting', accountingRoutes);
 
 // Error Handling Middleware
 app.use(errorHandler);

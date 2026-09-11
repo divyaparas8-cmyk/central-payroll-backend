@@ -130,6 +130,19 @@ export interface AuditLogItem {
   ipAddress?: string;
 }
 
+export interface TimeRecord {
+  id: string;
+  userId: string;
+  employeeId?: string;
+  employeeName: string;
+  clockIn: string;
+  clockOut?: string;
+  totalHours: number;
+  status: 'ClockedIn' | 'ClockedOut';
+  notes?: string;
+  createdAt?: string;
+}
+
 export interface PermissionMatrix {
   dashboard: { view: boolean };
   employees: { view: boolean; create: boolean; edit: boolean; delete: boolean };
@@ -143,4 +156,100 @@ export interface PermissionMatrix {
   permissions: { view: boolean; edit: boolean };
   userAccounts: { view: boolean; manage: boolean };
   settings: { view: boolean; edit: boolean };
+  accounts?: { view: boolean };
+  myTime?: { view: boolean; clock: boolean; export: boolean };
 }
+
+// -------------------------------------------------------------
+// Customer Accounting, Invoices, Payments & General Ledger Types
+// -------------------------------------------------------------
+
+export interface Customer {
+  id: string;
+  name: string;
+  customerName?: string;
+  phone?: string;
+  email?: string;
+  billingAddress?: string;
+  shippingAddress?: string;
+  status: 'Active' | 'Inactive';
+  notes?: string;
+  aliases?: string[];
+  balance?: number;
+  createdAt?: string;
+}
+
+export interface InvoiceItem {
+  id?: string;
+  service: string;
+  description: string;
+  quantity: number;
+  rate: number;
+  amount: number;
+}
+
+export interface Invoice {
+  id: string;
+  customerId: string;
+  customerName?: string;
+  customerEmail?: string;
+  number: string;
+  terms: 'Due on receipt' | 'Net 7' | 'Net 15' | 'Net 30' | 'Net 60' | string;
+  date: string; // YYYY-MM-DD
+  dueDate: string; // YYYY-MM-DD
+  items: InvoiceItem[];
+  memo?: string;
+  amount: number;
+  paidAmount?: number;
+  balance?: number;
+  status: 'Paid' | 'Owing';
+  createdAt?: string;
+}
+
+export interface Payment {
+  id: string;
+  customerId: string;
+  customerName?: string;
+  invoiceId?: string;
+  amount: number;
+  date: string; // YYYY-MM-DD
+  method: 'Bank Transfer' | 'Credit Card' | 'Debit Card' | 'Cash' | 'Cheque' | 'Other' | string;
+  reference?: string;
+  note?: string;
+  createdAt?: string;
+}
+
+export interface GeneralLedgerEntry {
+  id?: string;
+  date: string;
+  type: string; // 'Payment' | 'Invoice' | 'Payroll Check' | 'Check' | 'Pledge' | 'Tax Payment'
+  number?: string;
+  name: string;
+  memo?: string;
+  account: string; // 'Accounts Receivable' | 'Service Income' | 'Cash / Bank' | etc.
+  debit: number;
+  credit: number;
+  source?: string;
+  balance?: number | null;
+}
+
+export interface AgingSummary {
+  customerId: string;
+  customerName: string;
+  current: number;
+  d1_30: number;
+  d31_60: number;
+  d61_90: number;
+  d90_plus: number;
+  total: number;
+}
+
+export interface AccountingKPIs {
+  customerCount: number;
+  openInvoices: number;
+  accountsReceivable: number;
+  overdue: number;
+  paymentsReceived: number;
+  importSummary: string;
+}
+
