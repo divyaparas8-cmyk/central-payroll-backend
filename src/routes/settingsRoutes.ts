@@ -5,17 +5,10 @@ const router = express.Router();
 
 router.get('/', async (req, res) => {
   try {
+    const settings = await mySQLDb.getCompanySettings();
     res.json({
       success: true,
-      data: {
-        organizationName: 'Central Dispatch Limited',
-        country: 'Bermuda',
-        currency: 'BMD',
-        payFrequency: 'Weekly',
-        weekStartsOn: 'Thursday',
-        weekEndsOn: 'Wednesday',
-        taxSystem: 'Bermuda Statutory Deduction Matrix Active'
-      }
+      data: settings
     });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
@@ -25,7 +18,8 @@ router.get('/', async (req, res) => {
 router.post('/', async (req, res) => {
   try {
     const settings = req.body;
-    res.json({ success: true, message: 'Settings saved successfully', data: settings });
+    const saved = await mySQLDb.saveCompanySettings(settings);
+    res.json({ success: true, message: 'Settings saved successfully', data: saved });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
   }

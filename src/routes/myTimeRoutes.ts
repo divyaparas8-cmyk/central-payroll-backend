@@ -30,7 +30,7 @@ router.get('/status', async (req, res) => {
     res.json({
       success: true,
       isClockedIn,
-      currentRecord: latest
+      currentRecord: isClockedIn ? latest : null
     });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });

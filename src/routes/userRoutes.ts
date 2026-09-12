@@ -90,4 +90,47 @@ router.patch('/:id/status', async (req: Request, res: Response) => {
   }
 });
 
+// POST change password (for logged-in user or super admin reset)
+router.post('/change-password', async (req: Request, res: Response) => {
+  const { userId, username, currentPassword, newPassword } = req.body;
+  const targetIdentifier = userId || username;
+
+  if (!targetIdentifier || !newPassword) {
+    return res.status(400).json({ success: false, error: 'User ID / username and new password are required.' });
+  }
+
+  if (newPassword.length < 4) {
+    return res.status(400).json({ success: false, error: 'Password must be at least 4 characters long.' });
+  }
+
+  try {
+    const user = await mySQLDb.getUserById(targetIdentifier);
+    if (!user) {
+      return res.status(404).json({ success: false, error: 'User not found.' });
+    }
+
+    // If currentPassword is provided (self-service password change), verify it
+    if (currentPassword && user.password && user.password !== currentPassword) {
+      return res.status(400).json({ success: false, error: 'Current password is incorrect.' });
+    }
+
+    await mySQLDb.updateUserPassword(user.id, newPassword);
+
+    // Also update in-memory fallback
+    const memUsers = db.getUsers();
+    const memUser = memUsers.find(u => u.id === user.id || u.username.toLowerCase() === user.username.toLowerCase());
+    if (memUser) {
+      memUser.password = newPassword;
+      db.setUsers(memUsers);
+    }
+
+    return res.json({
+      success: true,
+      message: `Password updated successfully for ${user.displayName || user.username}`
+    });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 export default router;
