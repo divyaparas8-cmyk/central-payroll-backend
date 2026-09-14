@@ -10,13 +10,21 @@ router.get('/', async (req, res) => {
     const search = req.query.search as string;
     let customers = await mySQLDb.getCustomers();
 
-    if (status) customers = customers.filter(c => c.status === status);
+    // Ensure strict Alphabetical A-to-Z sort
+    customers.sort((a, b) => (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' }));
+
+    if (status && status !== 'All') {
+      customers = customers.filter(c => c.status?.toLowerCase() === status.toLowerCase());
+    }
     if (search) {
-      const q = search.toLowerCase();
+      const q = search.toLowerCase().trim();
       customers = customers.filter(c => 
-        c.name.toLowerCase().includes(q) || 
+        (c.name && c.name.toLowerCase().includes(q)) || 
+        (c.customerName && c.customerName.toLowerCase().includes(q)) ||
         (c.phone && c.phone.toLowerCase().includes(q)) || 
-        (c.email && c.email.toLowerCase().includes(q))
+        (c.email && c.email.toLowerCase().includes(q)) ||
+        (c.billingAddress && c.billingAddress.toLowerCase().includes(q)) ||
+        (c.id && c.id.toLowerCase().includes(q))
       );
     }
 

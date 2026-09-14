@@ -19,7 +19,6 @@ import generalLedgerRoutes from './routes/generalLedgerRoutes';
 import permissionsRoutes from './routes/permissionsRoutes';
 import userAccountsRoutes from './routes/userAccountsRoutes';
 import settingsRoutes from './routes/settingsRoutes';
-import myTimeRoutes from './routes/myTimeRoutes';
 import authRoutes from './routes/authRoutes';
 import emailRoutes from './routes/emailRoutes';
 import accountingRoutes from './routes/accountingRoutes';
@@ -83,9 +82,6 @@ app.use('/api/audit', auditReportsRoutes);
 // Menu: "Payslips"
 app.use('/api/payslips', payslipsRoutes);
 
-// Menu: "My Time" / Time Records
-app.use('/api/my-time', myTimeRoutes);
-app.use('/api/time-records', myTimeRoutes);
 
 // =======================================================
 // 2. CUSTOMERS & ACCOUNTS MENU REST APIS (Named after each menu)

@@ -133,4 +133,19 @@ router.post('/change-password', async (req: Request, res: Response) => {
   }
 });
 
+// DELETE user account
+router.delete('/:id', async (req: Request, res: Response) => {
+  const { id } = req.params;
+  try {
+    await mySQLDb.deleteUser(id);
+    const users = db.getUsers().filter(u => u.id !== id && u.username.toLowerCase() !== id.toLowerCase());
+    db.setUsers(users);
+    res.json({ success: true, message: 'User deleted successfully' });
+  } catch (err: any) {
+    const users = db.getUsers().filter(u => u.id !== id && u.username.toLowerCase() !== id.toLowerCase());
+    db.setUsers(users);
+    res.json({ success: true, message: 'User deleted successfully' });
+  }
+});
+
 export default router;

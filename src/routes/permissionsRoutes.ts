@@ -15,8 +15,7 @@ export const superAdminPermissions = {
   permissions: { view: true, edit: true }, // Permissions Administration
   userAccounts: { view: true, manage: true }, // User Accounts Administration
   settings: { view: true, edit: true }, // Company Profile & Settings
-  accounts: { view: true, edit: true }, // Customer Invoices & General Ledger
-  myTime: { view: true, clock: true, export: true } // Time Records
+  accounts: { view: true, edit: true } // Customer Invoices & General Ledger
 };
 
 export const adminPermissions = {
@@ -26,7 +25,6 @@ export const adminPermissions = {
   schedules: { view: true, edit: true, print: true, addNotes: true }, // Weekly Schedules & Rotas
   leave: { view: true, manage: true }, // Leave Calendars
   accounts: { view: true, edit: true }, // Customer Invoices, Payments & General Ledger
-  myTime: { view: true, clock: false, export: true }, // Time Records (View/Export)
   settings: { view: true, edit: true }, // Company Settings
   audit: { view: true, export: true }, // Audit Logging
   payroll: { view: false, edit: false, approve: false, export: false }, // Strictly REMOVED from Admin (Super Admin only)
@@ -49,8 +47,7 @@ export const staffPermissions = {
   permissions: { view: false, edit: false },
   userAccounts: { view: false, manage: false },
   settings: { view: false, edit: false },
-  accounts: { view: false },
-  myTime: { view: false, clock: false, export: false } // Clock-in/clock-out removed per client directive
+  accounts: { view: false }
 };
 
 router.get('/', async (req, res) => {

@@ -115,4 +115,33 @@ router.post('/set-password', async (req, res) => {
   }
 });
 
+// DELETE user account
+router.delete('/:id', async (req, res) => {
+  const { id } = req.params;
+  try {
+    const user = await mySQLDb.getUserById(id);
+    if (user && user.username.toLowerCase() === 'superadmin') {
+      return res.status(400).json({ success: false, error: 'Cannot delete primary superadmin account.' });
+    }
+
+    await mySQLDb.deleteUser(id);
+
+    if (user) {
+      await mySQLDb.saveAuditLog({
+        id: 'aud-' + Date.now(),
+        action: 'USER_DELETED',
+        module: 'User Accounts',
+        user: 'superadmin',
+        role: 'superadmin',
+        timestamp: new Date().toISOString(),
+        details: `Deleted user account ${user.username} (${user.displayName})`
+      });
+    }
+
+    return res.json({ success: true, message: 'User deleted successfully from database' });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 export default router;

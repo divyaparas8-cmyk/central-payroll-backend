@@ -12,8 +12,7 @@ import {
   Customer,
   Invoice,
   Payment,
-  GeneralLedgerEntry,
-  TimeRecord
+  GeneralLedgerEntry
 } from '../types';
 
 dotenv.config();
@@ -251,23 +250,9 @@ export class MySQLDatabase {
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
       `);
 
-      // 12. Create Time Records Table (For Staff Clock In / Clock Out & Hours Export)
-      await connection.query(`
-        CREATE TABLE IF NOT EXISTS time_records (
-          id VARCHAR(50) PRIMARY KEY,
-          userId VARCHAR(50) NOT NULL,
-          employeeId VARCHAR(50),
-          employeeName VARCHAR(200) NOT NULL,
-          clockIn VARCHAR(100) NOT NULL,
-          clockOut VARCHAR(100),
-          totalHours DECIMAL(6,2) DEFAULT 0.00,
-          status ENUM('ClockedIn', 'ClockedOut') NOT NULL DEFAULT 'ClockedIn',
-          notes TEXT,
-          createdAt VARCHAR(100),
-          INDEX idx_user_time (userId),
-          INDEX idx_emp_time (employeeId)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-      `);
+      // 12. Drop legacy time_records table if exists
+      await connection.query('DROP TABLE IF EXISTS time_records');
+
 
       // 13. Create App Settings & Workspace Notes Table
       await connection.query(`
@@ -329,8 +314,8 @@ export class MySQLDatabase {
         {
           id: 'usr-3',
           username: 'staff',
-          displayName: 'John Doe (Staff)',
-          email: 'johndoe@centraldispatch.bm',
+          displayName: 'Staff',
+          email: 'staff@centraldispatch.bm',
           role: 'staff',
           status: 'Active',
           lastLogin: '2026-09-10 08:45 AM',
@@ -346,38 +331,20 @@ export class MySQLDatabase {
           [u.id, u.username, u.displayName, u.email, 'ChangeMe123!', u.role, u.status, u.lastLogin, u.createdAt]
         );
       }
-      // Check & Seed Initial Master Staff Members (at least 8 loaded with full details)
+
+      // Remove unwanted user accounts so only 1 for each role remains
+      await pool.query("DELETE FROM users WHERE id IN ('usr-alesia', 'usr-global', 'usr-ssh', 'usr-neli', 'usr-ty', 'usr-tanuvi') OR username IN ('alesia.brangman', 'global', 'ssh', 'neli.outerbridge', 'ty.mcgowan', 'tanuvi.patel')").catch(() => {});
+      // Clean up deleted/test staff and test customers per client directive
+      await pool.query("DELETE FROM employees WHERE id IN ('staff6', 'staff7', 'shonee', 'tiffany', 'aman') OR displayName LIKE '%aman singh%' OR displayName LIKE '%Shonee%' OR displayName LIKE '%Tiffany%'").catch(() => {});
+      await pool.query("DELETE FROM customers WHERE id IN ('aaa', 'abc') OR name IN ('aaa', 'abc') OR email IN ('k@gmail.com', 'a@gmail.com')").catch(() => {});
+      await pool.query("UPDATE customers SET phone = REPLACE(phone, 'Phone: Phone:', 'Phone:') WHERE phone LIKE '%Phone: Phone:%'").catch(() => {});
+      await pool.query("UPDATE customers SET phone = REPLACE(phone, 'Phone: ', '') WHERE phone LIKE 'Phone: %'").catch(() => {});
+
+      // Check & Seed Initial Official Staff Members (Alesia, Global, Ty, Neli, SSH, Tanuvi)
       const initialStaffList = [
         {
-          id: 'ali',
-          employeeId: 'CDL-001',
-          firstName: 'Hamza',
-          middleInitial: '',
-          lastName: 'Ali',
-          displayName: 'Ali Hamza',
-          position: 'Global Dispatch / Call Center',
-          department: 'Operations',
-          status: 'Active',
-          employmentType: 'Full-Time',
-          payType: 'Hourly',
-          payRate: 18.00,
-          holidayRate: 27.00,
-          startDate: '2024-01-15',
-          dateOfBirth: '1992-04-12',
-          personalPhone: '(441) 505-1234',
-          workPhone: '(441) 295-4141',
-          email: 'hamza@gdmbpo.com',
-          address: '3 Laffan Street, Pembroke HM09, Bermuda',
-          emergencyContactName: 'Sarah Hamza',
-          emergencyContactPhone: '(441) 518-9901',
-          emergencyContactRelation: 'Spouse',
-          paymentMethod: 'Direct Deposit',
-          bankName: 'Bank of N.T. Butterfield & Son',
-          bankAccountMasked: '••••••••4821'
-        },
-        {
           id: 'alesia',
-          employeeId: 'CDL-002',
+          employeeId: 'CDL-001',
           firstName: 'Alesia',
           middleInitial: '',
           lastName: 'Brangman',
@@ -401,6 +368,33 @@ export class MySQLDatabase {
           paymentMethod: 'Direct Deposit',
           bankName: 'HSBC Bank Bermuda',
           bankAccountMasked: '••••••••6632'
+        },
+        {
+          id: 'global',
+          employeeId: 'CDL-002',
+          firstName: 'Global',
+          middleInitial: '',
+          lastName: 'Dispatch',
+          displayName: 'Global',
+          position: 'Global Dispatch / Call Center',
+          department: 'Operations',
+          status: 'Active',
+          employmentType: 'Full-Time',
+          payType: 'Hourly',
+          payRate: 18.00,
+          holidayRate: 27.00,
+          startDate: '2024-01-15',
+          dateOfBirth: '1992-04-12',
+          personalPhone: '(441) 505-1234',
+          workPhone: '(441) 295-4141',
+          email: 'hamza@gdmbpo.com',
+          address: '3 Laffan Street, Pembroke HM09, Bermuda',
+          emergencyContactName: 'Sarah Hamza',
+          emergencyContactPhone: '(441) 518-9901',
+          emergencyContactRelation: 'Spouse',
+          paymentMethod: 'Direct Deposit',
+          bankName: 'Bank of N.T. Butterfield & Son',
+          bankAccountMasked: '••••••••4821'
         },
         {
           id: 'ty',
@@ -462,7 +456,7 @@ export class MySQLDatabase {
           firstName: 'SSH',
           middleInitial: '',
           lastName: 'SSH',
-          displayName: 'SSH, SSH',
+          displayName: 'SSH',
           position: 'SSH Dispatch / Call Center',
           department: 'Operations',
           status: 'Active',
@@ -484,62 +478,8 @@ export class MySQLDatabase {
           bankAccountMasked: '••••••••7741'
         },
         {
-          id: 'staff6',
+          id: 'tanuvi',
           employeeId: 'CDL-006',
-          firstName: 'Shonee',
-          middleInitial: '',
-          lastName: 'Simons',
-          displayName: 'Miss Shonee Simons',
-          position: 'Dispatcher',
-          department: 'Operations',
-          status: 'Active',
-          employmentType: 'Full-Time',
-          payType: 'Hourly',
-          payRate: 16.00,
-          holidayRate: 24.00,
-          startDate: '2024-06-01',
-          dateOfBirth: '1997-07-22',
-          personalPhone: '(441) 532-6611',
-          workPhone: '(441) 295-4141',
-          email: 'shonee.simons@centraldispatch.bm',
-          address: '19 South Road, Warwick WK08, Bermuda',
-          emergencyContactName: 'Cheryl Simons',
-          emergencyContactPhone: '(441) 508-4422',
-          emergencyContactRelation: 'Mother',
-          paymentMethod: 'Direct Deposit',
-          bankName: 'HSBC Bank Bermuda',
-          bankAccountMasked: '••••••••3320'
-        },
-        {
-          id: 'staff7',
-          employeeId: 'CDL-007',
-          firstName: 'Tiffany',
-          middleInitial: '',
-          lastName: 'Robinson',
-          displayName: 'Miss Tiffany Robinson',
-          position: 'Dispatcher / Customer Service',
-          department: 'Operations',
-          status: 'Active',
-          employmentType: 'Full-Time',
-          payType: 'Hourly',
-          payRate: 16.00,
-          holidayRate: 24.00,
-          startDate: '2024-04-10',
-          dateOfBirth: '1995-12-05',
-          personalPhone: '(441) 519-2288',
-          workPhone: '(441) 295-4141',
-          email: 'tiffany.robinson@centraldispatch.bm',
-          address: '7 Palmetto Road, Devonshire DV05, Bermuda',
-          emergencyContactName: 'James Robinson',
-          emergencyContactPhone: '(441) 529-1100',
-          emergencyContactRelation: 'Father',
-          paymentMethod: 'Direct Deposit',
-          bankName: 'Butterfield Bank Bermuda',
-          bankAccountMasked: '••••••••8819'
-        },
-        {
-          id: 'staff8',
-          employeeId: 'CDL-008',
           firstName: 'Tanuvi',
           middleInitial: '',
           lastName: 'Patel',
@@ -575,12 +515,11 @@ export class MySQLDatabase {
             emergencyContactRelation, paymentMethod, bankName, bankAccountMasked
           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
           ON DUPLICATE KEY UPDATE
-            displayName = IF(displayName = '' OR displayName IS NULL, VALUES(displayName), displayName),
+            displayName = VALUES(displayName),
+            position = VALUES(position),
             email = IF(email LIKE '%t@gmail.com%' OR email = '' OR email IS NULL, VALUES(email), email),
             personalPhone = IF(personalPhone = '' OR personalPhone IS NULL, VALUES(personalPhone), personalPhone),
-            address = IF(address = '' OR address IS NULL, VALUES(address), address),
-            emergencyContactName = IF(emergencyContactName = '' OR emergencyContactName IS NULL, VALUES(emergencyContactName), emergencyContactName),
-            emergencyContactPhone = IF(emergencyContactPhone = '' OR emergencyContactPhone IS NULL, VALUES(emergencyContactPhone), emergencyContactPhone)`,
+            address = IF(address = '' OR address IS NULL, VALUES(address), address)`,
           [
             emp.id, emp.employeeId, emp.firstName, emp.middleInitial, emp.lastName, emp.displayName,
             emp.position, emp.department, emp.status, emp.employmentType, emp.payType,
@@ -590,7 +529,8 @@ export class MySQLDatabase {
           ]
         );
       }
-      console.log('✅ Initial 8 full staff records verified in MySQL employees table!');
+      console.log('✅ Initial official staff records verified in MySQL employees table!');
+
 
       // Check & Seed Imported Accounting Customers & General Ledger if empty
       const [custRows]: any = await pool.query('SELECT COUNT(*) as count FROM customers');
@@ -1209,119 +1149,6 @@ export class MySQLDatabase {
   }
 
   // ==========================================================
-  // TIME RECORDS / MY TIME (For Staff Clock In/Out & Export)
-  // ==========================================================
-
-  public async getTimeRecords(userId?: string): Promise<TimeRecord[]> {
-    let sql = 'SELECT * FROM time_records';
-    const params: any[] = [];
-    if (userId) {
-      sql += ' WHERE userId = ? OR employeeId = ?';
-      params.push(userId, userId);
-    }
-    sql += ' ORDER BY createdAt DESC, clockIn DESC';
-    const [rows]: any = await pool.query(sql, params);
-    return rows.map((r: any) => ({
-      ...r,
-      totalHours: Number(r.totalHours || 0)
-    }));
-  }
-
-  public async getLatestTimeRecord(userId: string): Promise<TimeRecord | null> {
-    // 1. Check for active ClockedIn session first
-    const [activeRows]: any = await pool.query(
-      "SELECT * FROM time_records WHERE (userId = ? OR employeeId = ?) AND status = 'ClockedIn' ORDER BY createdAt DESC, id DESC LIMIT 1",
-      [userId, userId]
-    );
-    if (activeRows.length > 0) {
-      const r = activeRows[0];
-      return {
-        ...r,
-        totalHours: Number(r.totalHours || 0)
-      };
-    }
-
-    // 2. Otherwise return the latest completed record
-    const [rows]: any = await pool.query(
-      'SELECT * FROM time_records WHERE userId = ? OR employeeId = ? ORDER BY createdAt DESC, id DESC LIMIT 1',
-      [userId, userId]
-    );
-    if (rows.length === 0) return null;
-    const r = rows[0];
-    return {
-      ...r,
-      totalHours: Number(r.totalHours || 0)
-    };
-  }
-
-  public async clockIn(userId: string, employeeName: string, employeeId?: string, notes?: string): Promise<TimeRecord> {
-    const now = new Date().toISOString();
-
-    // Close any previous open session for this user
-    await pool.query(
-      "UPDATE time_records SET status = 'ClockedOut', clockOut = ?, totalHours = 0.01 WHERE (userId = ? OR employeeId = ?) AND status = 'ClockedIn'",
-      [now, userId, userId]
-    ).catch(() => {});
-
-    const id = `time-${Date.now()}`;
-    const newRecord: TimeRecord = {
-      id,
-      userId,
-      employeeId: employeeId || userId,
-      employeeName,
-      clockIn: now,
-      totalHours: 0,
-      status: 'ClockedIn',
-      notes: notes || '',
-      createdAt: now
-    };
-
-    await pool.query(
-      `INSERT INTO time_records (id, userId, employeeId, employeeName, clockIn, totalHours, status, notes, createdAt)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [newRecord.id, newRecord.userId, newRecord.employeeId, newRecord.employeeName, newRecord.clockIn, 0, 'ClockedIn', newRecord.notes, newRecord.createdAt]
-    );
-
-    return newRecord;
-  }
-
-  public async clockOut(userId: string, notes?: string): Promise<TimeRecord | null> {
-    const [activeRows]: any = await pool.query(
-      "SELECT * FROM time_records WHERE (userId = ? OR employeeId = ?) AND status = 'ClockedIn' ORDER BY createdAt DESC, id DESC LIMIT 1",
-      [userId, userId]
-    );
-
-    const now = new Date().toISOString();
-    if (activeRows.length === 0) {
-      return this.getLatestTimeRecord(userId);
-    }
-
-    const latest = activeRows[0];
-    let clockInTime = new Date(latest.clockIn).getTime();
-    if (isNaN(clockInTime)) {
-      clockInTime = new Date(latest.createdAt).getTime();
-    }
-    const clockOutTime = new Date(now).getTime();
-    const diffMs = !isNaN(clockInTime) ? Math.max(0, clockOutTime - clockInTime) : 0;
-    const hours = Math.max(0.01, Number((diffMs / (1000 * 60 * 60)).toFixed(2)));
-
-    const updatedNotes = notes ? (latest.notes ? `${latest.notes} | ${notes}` : notes) : latest.notes;
-
-    await pool.query(
-      "UPDATE time_records SET clockOut = ?, totalHours = ?, status = 'ClockedOut', notes = ? WHERE (userId = ? OR employeeId = ?) AND status = 'ClockedIn'",
-      [now, hours, updatedNotes || '', userId, userId]
-    );
-
-    return {
-      ...latest,
-      clockOut: now,
-      totalHours: hours,
-      status: 'ClockedOut',
-      notes: updatedNotes
-    };
-  }
-
-  // ==========================================================
   // USERS & PASSWORD MANAGEMENT
   // ==========================================================
   public async getUsers(): Promise<UserAccount[]> {
@@ -1396,6 +1223,14 @@ export class MySQLDatabase {
       'UPDATE users SET password = ? WHERE id = ? OR LOWER(username) = LOWER(?)',
       [newPassword, userIdOrUsername, userIdOrUsername]
     );
+    return result.affectedRows > 0;
+  }
+
+  public async deleteUser(idOrUsername: string): Promise<boolean> {
+    const [result]: any = await pool.query('DELETE FROM users WHERE id = ? OR LOWER(username) = LOWER(?)', [
+      idOrUsername,
+      idOrUsername
+    ]);
     return result.affectedRows > 0;
   }
 
@@ -1478,7 +1313,6 @@ export class MySQLDatabase {
     const [invoices]: any = await pool.query('SELECT * FROM invoices');
     const [payments]: any = await pool.query('SELECT * FROM payments');
     const [general_ledger]: any = await pool.query('SELECT * FROM general_ledger');
-    const [time_records]: any = await pool.query('SELECT * FROM time_records');
     const [app_settings]: any = await pool.query('SELECT * FROM app_settings');
 
     return {
@@ -1496,7 +1330,6 @@ export class MySQLDatabase {
         invoices,
         payments,
         general_ledger,
-        time_records,
         app_settings
       }
     };

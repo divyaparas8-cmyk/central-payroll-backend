@@ -3,27 +3,20 @@ import { mySQLDb } from '../db/mysqlDatabase';
 
 const router = express.Router();
 
-// Default 8 staff members matching prototype with full details
+// Official 6 staff members
 export const DEFAULT_STAFF_MEMBERS = [
-  { id: 'ali', employeeId: 'CDL-001', displayName: 'Ali Hamza', firstName: 'Hamza', lastName: 'Ali', middleInitial: '', position: 'Global Dispatch / Call Center', department: 'Operations', status: 'Active', email: 'hamza@gdmbpo.com', personalPhone: '(441) 505-1234', workPhone: '(441) 295-4141', address: '3 Laffan Street, Pembroke HM09, Bermuda', emergencyContactName: 'Sarah Hamza', emergencyContactPhone: '(441) 518-9901', emergencyContactRelation: 'Spouse' },
-  { id: 'alesia', employeeId: 'CDL-002', displayName: 'Alesia Brangman', firstName: 'Alesia', lastName: 'Brangman', middleInitial: '', position: 'Dispatch Supervisor', department: 'Operations', status: 'Active', email: 'alesia.brangman@centraldispatch.bm', personalPhone: '(441) 534-8822', workPhone: '(441) 295-4141', address: '14 Cedar Avenue, Hamilton HM11, Bermuda', emergencyContactName: 'David Brangman', emergencyContactPhone: '(441) 504-3321', emergencyContactRelation: 'Brother' },
+  { id: 'alesia', employeeId: 'CDL-001', displayName: 'Alesia Brangman', firstName: 'Alesia', lastName: 'Brangman', middleInitial: '', position: 'Dispatch Supervisor', department: 'Operations', status: 'Active', email: 'alesia.brangman@centraldispatch.bm', personalPhone: '(441) 534-8822', workPhone: '(441) 295-4141', address: '14 Cedar Avenue, Hamilton HM11, Bermuda', emergencyContactName: 'David Brangman', emergencyContactPhone: '(441) 504-3321', emergencyContactRelation: 'Brother' },
+  { id: 'global', employeeId: 'CDL-002', displayName: 'Global', firstName: 'Global', lastName: 'Dispatch', middleInitial: '', position: 'Global Dispatch / Call Center', department: 'Operations', status: 'Active', email: 'hamza@gdmbpo.com', personalPhone: '(441) 505-1234', workPhone: '(441) 295-4141', address: '3 Laffan Street, Pembroke HM09, Bermuda', emergencyContactName: 'Sarah Hamza', emergencyContactPhone: '(441) 518-9901', emergencyContactRelation: 'Spouse' },
   { id: 'ty', employeeId: 'CDL-003', displayName: 'Tyonika McGowan (Ty)', firstName: 'Tyonika', lastName: 'McGowan', middleInitial: '', position: 'Dispatcher', department: 'Operations', status: 'Active', email: 'tyonika.mcgowan@centraldispatch.bm', personalPhone: '(441) 516-7733', workPhone: '(441) 295-4141', address: '22 Middle Road, Devonshire DV06, Bermuda', emergencyContactName: 'Patricia McGowan', emergencyContactPhone: '(441) 522-8811', emergencyContactRelation: 'Mother' },
   { id: 'neli', employeeId: 'CDL-004', displayName: 'Neli Outerbridge', firstName: 'Neli', lastName: 'Outerbridge', middleInitial: '', position: 'Owner / Manager / Director', department: 'Management', status: 'Active', email: 'neli@bermudaislandtaxi.com', personalPhone: '(441) 599-4455', workPhone: '(441) 295-4141', address: '8 Harbour Road, Paget PG02, Bermuda', emergencyContactName: 'Robert Outerbridge', emergencyContactPhone: '(441) 501-6677', emergencyContactRelation: 'Spouse' },
-  { id: 'ssh', employeeId: 'CDL-005', displayName: 'SSH, SSH', firstName: 'SSH', lastName: 'SSH', middleInitial: '', position: 'SSH Dispatch / Call Center', department: 'Operations', status: 'Active', email: 'ssh.dispatch@centraldispatch.bm', personalPhone: '(441) 527-9944', workPhone: '(441) 295-4141', address: '5 North Shore Road, Pembroke HM14, Bermuda', emergencyContactName: 'Michael Smith', emergencyContactPhone: '(441) 512-3344', emergencyContactRelation: 'Guardian' },
-  { id: 'staff6', employeeId: 'CDL-006', displayName: 'Miss Shonee Simons', firstName: 'Shonee', lastName: 'Simons', middleInitial: '', position: 'Dispatcher', department: 'Operations', status: 'Active', email: 'shonee.simons@centraldispatch.bm', personalPhone: '(441) 532-6611', workPhone: '(441) 295-4141', address: '19 South Road, Warwick WK08, Bermuda', emergencyContactName: 'Cheryl Simons', emergencyContactPhone: '(441) 508-4422', emergencyContactRelation: 'Mother' },
-  { id: 'staff7', employeeId: 'CDL-007', displayName: 'Miss Tiffany Robinson', firstName: 'Tiffany', lastName: 'Robinson', middleInitial: '', position: 'Dispatcher / Customer Service', department: 'Operations', status: 'Active', email: 'tiffany.robinson@centraldispatch.bm', personalPhone: '(441) 519-2288', workPhone: '(441) 295-4141', address: '7 Palmetto Road, Devonshire DV05, Bermuda', emergencyContactName: 'James Robinson', emergencyContactPhone: '(441) 529-1100', emergencyContactRelation: 'Father' },
-  { id: 'staff8', employeeId: 'CDL-008', displayName: 'Tanuvi Patel', firstName: 'Tanuvi', lastName: 'Patel', middleInitial: '', position: 'Dispatcher / Operations', department: 'Operations', status: 'Active', email: 'tanuvi.patel@centraldispatch.bm', personalPhone: '(441) 538-4499', workPhone: '(441) 295-4141', address: '11 Point Finger Road, Paget DV04, Bermuda', emergencyContactName: 'Ramesh Patel', emergencyContactPhone: '(441) 507-8899', emergencyContactRelation: 'Father' },
+  { id: 'ssh', employeeId: 'CDL-005', displayName: 'SSH', firstName: 'SSH', lastName: 'SSH', middleInitial: '', position: 'SSH Dispatch / Call Center', department: 'Operations', status: 'Active', email: 'ssh.dispatch@centraldispatch.bm', personalPhone: '(441) 527-9944', workPhone: '(441) 295-4141', address: '5 North Shore Road, Pembroke HM14, Bermuda', emergencyContactName: 'Michael Smith', emergencyContactPhone: '(441) 512-3344', emergencyContactRelation: 'Guardian' },
+  { id: 'tanuvi', employeeId: 'CDL-006', displayName: 'Tanuvi Patel', firstName: 'Tanuvi', lastName: 'Patel', middleInitial: '', position: 'Dispatcher / Operations', department: 'Operations', status: 'Active', email: 'tanuvi.patel@centraldispatch.bm', personalPhone: '(441) 538-4499', workPhone: '(441) 295-4141', address: '11 Point Finger Road, Paget DV04, Bermuda', emergencyContactName: 'Ramesh Patel', emergencyContactPhone: '(441) 507-8899', emergencyContactRelation: 'Father' }
 ];
 
 router.get('/', async (req, res) => {
   try {
     const dbEmployees = await mySQLDb.getEmployees();
-    const existingIds = new Set(dbEmployees.map(e => (e.id || '').toLowerCase()));
-    const missingDefaults = DEFAULT_STAFF_MEMBERS.filter(d => !existingIds.has(d.id.toLowerCase()) && !existingIds.has(d.employeeId.toLowerCase()));
-    
-    // Combine db employees and defaults
-    const combined = [...dbEmployees, ...missingDefaults];
-    res.json({ success: true, count: combined.length, contacts: combined });
+    res.json({ success: true, count: dbEmployees.length, contacts: dbEmployees });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
   }

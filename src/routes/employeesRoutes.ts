@@ -44,11 +44,10 @@ router.put('/:id', async (req, res) => {
   }
 });
 
-router.patch('/:id/toggle', async (req, res) => {
+router.delete('/:id', async (req, res) => {
   try {
-    await mySQLDb.toggleEmployeeStatus(req.params.id);
-    const updated = await mySQLDb.getEmployeeById(req.params.id);
-    res.json({ success: true, employee: updated });
+    await mySQLDb.deleteEmployee(req.params.id);
+    res.json({ success: true, message: 'Employee deleted successfully' });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
   }
