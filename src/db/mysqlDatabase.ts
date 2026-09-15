@@ -335,7 +335,7 @@ export class MySQLDatabase {
       // Remove unwanted user accounts so only 1 for each role remains
       await pool.query("DELETE FROM users WHERE id IN ('usr-alesia', 'usr-global', 'usr-ssh', 'usr-neli', 'usr-ty', 'usr-tanuvi') OR username IN ('alesia.brangman', 'global', 'ssh', 'neli.outerbridge', 'ty.mcgowan', 'tanuvi.patel')").catch(() => {});
       // Clean up deleted/test staff and test customers per client directive
-      await pool.query("DELETE FROM employees WHERE id IN ('staff6', 'staff7', 'shonee', 'tiffany', 'aman') OR displayName LIKE '%aman singh%' OR displayName LIKE '%Shonee%' OR displayName LIKE '%Tiffany%'").catch(() => {});
+      await pool.query("DELETE FROM employees WHERE id IN ('staff6', 'staff7', 'shonee', 'tiffany', 'aman') OR displayName LIKE '%aman singh%' OR displayName LIKE '%Shonee%' OR displayName LIKE '%Tiffany%' OR (id LIKE 'emp-%' AND id NOT IN ('alesia', 'global', 'ty', 'neli', 'ssh', 'tanuvi'))").catch(() => {});
       await pool.query("DELETE FROM customers WHERE id IN ('aaa', 'abc') OR name IN ('aaa', 'abc') OR email IN ('k@gmail.com', 'a@gmail.com')").catch(() => {});
       await pool.query("UPDATE customers SET phone = REPLACE(phone, 'Phone: Phone:', 'Phone:') WHERE phone LIKE '%Phone: Phone:%'").catch(() => {});
       await pool.query("UPDATE customers SET phone = REPLACE(phone, 'Phone: ', '') WHERE phone LIKE 'Phone: %'").catch(() => {});
@@ -506,6 +506,9 @@ export class MySQLDatabase {
         }
       ];
 
+      // Establish sensible initial defaults for a fresh database without overwriting real user edits on restarts.
+      // Every field in the ON DUPLICATE KEY UPDATE clause is strictly conditional:
+      // it only populates values if the database field is empty, NULL, or an unconfigured placeholder.
       for (const emp of initialStaffList) {
         await pool.query(
           `INSERT INTO employees (
@@ -515,8 +518,8 @@ export class MySQLDatabase {
             emergencyContactRelation, paymentMethod, bankName, bankAccountMasked
           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
           ON DUPLICATE KEY UPDATE
-            displayName = VALUES(displayName),
-            position = VALUES(position),
+            displayName = IF(displayName IS NULL OR displayName = '', VALUES(displayName), displayName),
+            position = IF(position IS NULL OR position = '', VALUES(position), position),
             email = IF(email LIKE '%t@gmail.com%' OR email = '' OR email IS NULL, VALUES(email), email),
             personalPhone = IF(personalPhone = '' OR personalPhone IS NULL, VALUES(personalPhone), personalPhone),
             address = IF(address = '' OR address IS NULL, VALUES(address), address)`,

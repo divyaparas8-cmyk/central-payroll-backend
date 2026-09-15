@@ -29,15 +29,26 @@ router.get('/', async (req, res) => {
       return { customerId: c.id, customerName: c.name, current, d1_30, d31_60, d61_90, d90_plus, total };
     }).filter(s => s.total > 0);
 
-    const total = summaries.reduce((acc, s) => ({
-      customerId: 'TOTAL', customerName: 'TOTAL',
+    const rawTotal = summaries.reduce((acc, s) => ({
       current: acc.current + s.current,
       d1_30: acc.d1_30 + s.d1_30,
       d31_60: acc.d31_60 + s.d31_60,
       d61_90: acc.d61_90 + s.d61_90,
       d90_plus: acc.d90_plus + s.d90_plus,
       total: acc.total + s.total
-    }), { customerId: 'TOTAL', customerName: 'TOTAL', current: 0, d1_30: 0, d31_60: 0, d61_90: 0, d90_plus: 0, total: 0 });
+    }), { current: 0, d1_30: 0, d31_60: 0, d61_90: 0, d90_plus: 0, total: 0 });
+
+    const round2 = (n: number) => Math.round(n * 100) / 100;
+    const total = {
+      customerId: 'TOTAL',
+      customerName: 'TOTAL',
+      current: round2(rawTotal.current),
+      d1_30: round2(rawTotal.d1_30),
+      d31_60: round2(rawTotal.d31_60),
+      d61_90: round2(rawTotal.d61_90),
+      d90_plus: round2(rawTotal.d90_plus),
+      total: round2(rawTotal.total)
+    };
 
     res.json({ success: true, data: { asOfDate, summaries, total } });
   } catch (error: any) {
