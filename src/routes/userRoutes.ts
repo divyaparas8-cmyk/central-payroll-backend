@@ -135,7 +135,7 @@ router.post('/change-password', async (req: Request, res: Response) => {
 
 // DELETE user account
 router.delete('/:id', async (req: Request, res: Response) => {
-  const { id } = req.params;
+  const id = req.params.id as string;
   try {
     await mySQLDb.deleteUser(id);
     const users = db.getUsers().filter(u => u.id !== id && u.username.toLowerCase() !== id.toLowerCase());
