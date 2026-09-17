@@ -36,27 +36,19 @@ class EmailService {
    */
   private async getTransporter(): Promise<{ transporter: Transporter | null; fromAddress: string }> {
     dotenv.config();
-    let host = process.env.SMTP_HOST || 'smtp.gmail.com';
-    let port = Number(process.env.SMTP_PORT) || 465;
-    let user = process.env.SMTP_USER || 'testak89193@gmail.com';
+    let user = (process.env.SMTP_USER || 'testak89193@gmail.com').trim();
     let pass = (process.env.SMTP_PASS || 'hnbygghuxyqrucsj').replace(/\s+/g, '');
-    let from = process.env.SMTP_FROM || `Central Dispatch <${user}>`;
-    let secure = process.env.SMTP_SECURE === 'true' || port === 465;
+    let from = `"Central Dispatch" <${user}>`;
 
-    if (!host || !user || !pass) {
+    if (!user || !pass) {
       return { transporter: null, fromAddress: from };
     }
 
     const transporter = nodemailer.createTransport({
-      host,
-      port,
-      secure,
+      service: 'gmail',
       auth: {
         user,
         pass
-      },
-      tls: {
-        rejectUnauthorized: false
       }
     });
 
@@ -262,6 +254,7 @@ class EmailService {
         text,
         html
       });
+      console.log(`[EMAIL DISPATCH SUCCESS] Invoice #${options.invoiceNumber} dispatched to ${options.recipientEmail} | Message ID: ${info.messageId}`);
       return { success: true, messageId: info.messageId };
     } catch (err: any) {
       console.error('[EMAIL ERROR] Failed to send invoice email:', err);
