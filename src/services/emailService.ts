@@ -35,26 +35,13 @@ class EmailService {
    * Builds an active Nodemailer transporter using .env or stored app_settings
    */
   private async getTransporter(): Promise<{ transporter: Transporter | null; fromAddress: string }> {
-    // 1. Check DB settings first for dynamic override
-    let host = process.env.SMTP_HOST || '';
-    let port = Number(process.env.SMTP_PORT) || 587;
-    let user = process.env.SMTP_USER || '';
-    let pass = process.env.SMTP_PASS || '';
-    let from = process.env.SMTP_FROM || `Central Dispatch <${user || 'info@bermudaislandtaxi.com'}>`;
+    dotenv.config();
+    let host = process.env.SMTP_HOST || 'smtp.gmail.com';
+    let port = Number(process.env.SMTP_PORT) || 465;
+    let user = process.env.SMTP_USER || 'testak89193@gmail.com';
+    let pass = (process.env.SMTP_PASS || 'hnbygghuxyqrucsj').replace(/\s+/g, '');
+    let from = process.env.SMTP_FROM || `Central Dispatch <${user}>`;
     let secure = process.env.SMTP_SECURE === 'true' || port === 465;
-
-    try {
-      const rawSettings = await mySQLDb.getSetting('smtp_config');
-      if (rawSettings) {
-        const parsed = JSON.parse(rawSettings);
-        if (parsed.host) host = parsed.host;
-        if (parsed.port) port = Number(parsed.port);
-        if (parsed.user) user = parsed.user;
-        if (parsed.pass) pass = parsed.pass;
-        if (parsed.from) from = parsed.from;
-        if (parsed.secure !== undefined) secure = Boolean(parsed.secure);
-      }
-    } catch (_) {}
 
     if (!host || !user || !pass) {
       return { transporter: null, fromAddress: from };
@@ -244,7 +231,7 @@ class EmailService {
       <p>Dear <strong>${options.customerName}</strong>,</p>
       <p>Please find attached your invoice details from Central Dispatch Limited.</p>
 
-      ${options.customMessage ? `<div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:12px; margin:16px 0; font-size:13px;">${options.customMessage}</div>` : ''}
+      ${options.customMessage ? `<div style="background:#f8fafc; border:1px solid #cbd5e1; border-radius:8px; padding:14px; margin:16px 0; font-size:13px; white-space: pre-wrap; line-height: 1.5; color: #1e293b;">${options.customMessage.replace(/\n/g, '<br/>')}</div>` : ''}
 
       <div class="amount-box">
         <span>TOTAL AMOUNT DUE</span>
