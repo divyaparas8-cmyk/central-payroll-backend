@@ -251,11 +251,15 @@ class EmailService {
 </html>
 `;
 
+    const text = `Central Dispatch Limited - Customer Invoice #${options.invoiceNumber}\n\nDear ${options.customerName},\n\nInvoice Number: ${options.invoiceNumber}\nTotal Amount Due: ${money(options.amount)}\n${options.dueDate ? `Due Date: ${options.dueDate}\n` : ''}\n${options.customMessage ? `${options.customMessage}\n\n` : ''}Pay Online Securely: ${payLink}\n\nCentral Dispatch Limited • 3 Laffan Street, Hamilton HM 09, Bermuda\naccounts@centraldispatch.bm • (441) 295-4141`;
+
     try {
       const info = await transporter.sendMail({
         from: fromAddress,
         to: options.recipientEmail,
+        replyTo: fromAddress,
         subject: `Invoice #${options.invoiceNumber} from Central Dispatch Limited ($${options.amount})`,
+        text,
         html
       });
       return { success: true, messageId: info.messageId };
