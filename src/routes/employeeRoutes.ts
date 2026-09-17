@@ -1,42 +1,99 @@
-import { Router, Request, Response } from 'express';
+import { Router, Response } from 'express';
 import { mySQLDb } from '../db/mysqlDatabase';
 import { db } from '../db/database';
 import { Employee } from '../types';
+import { AuthenticatedRequest, requirePermission } from '../middleware/authMiddleware';
 
 const router = Router();
 
-// GET all employees
-router.get('/', async (req: Request, res: Response) => {
+// Helper to check if caller has permission to view employee pay rates
+async function canViewPayRates(userRole: string): Promise<boolean> {
+  if (userRole === 'superadmin') return true;
+  try {
+    const rawSaved = await mySQLDb.getSetting('role_permissions');
+    if (rawSaved) {
+      const parsed = JSON.parse(rawSaved);
+      if (parsed && parsed[userRole]?.employees?.view === true) {
+        return true;
+      }
+    }
+  } catch (_) {}
+  return false;
+}
+
+// Helper to check if caller can view staff roster for schedules/leave/contacts
+async function canViewRoster(userRole: string): Promise<boolean> {
+  if (userRole === 'superadmin') return true;
+  try {
+    const rawSaved = await mySQLDb.getSetting('role_permissions');
+    if (rawSaved) {
+      const parsed = JSON.parse(rawSaved);
+      const rolePerms = parsed?.[userRole];
+      if (rolePerms?.employees?.view || rolePerms?.schedules?.view !== false || rolePerms?.leave?.view || rolePerms?.contacts?.view) {
+        return true;
+      }
+    }
+  } catch (_) {}
+  return true; // Default allow roster view for logged in staff/admin so schedules/leave/contacts work
+}
+
+function sanitizeEmployee(emp: Employee, includePay: boolean): Employee {
+  if (includePay) return emp;
+  return {
+    ...emp,
+    payRate: 0,
+    holidayRate: 0
+  };
+}
+
+// GET all employees (Allows roster view for schedules/leave/contacts; masks pay rates if employees.view is not granted)
+router.get('/', async (req: AuthenticatedRequest, res: Response) => {
+  const userRole = (req.user?.role || '').toLowerCase();
+  const allowed = await canViewRoster(userRole);
+  if (!allowed) {
+    return res.status(403).json({ success: false, error: "Access Denied: You do not have permission to view staff roster." });
+  }
+
+  const includePay = await canViewPayRates(userRole);
+
   try {
     const employees = await mySQLDb.getEmployees();
-    res.json({ success: true, employees });
+    res.json({ success: true, employees: employees.map(e => sanitizeEmployee(e, includePay)) });
   } catch (err) {
     const employees = db.getEmployees();
-    res.json({ success: true, employees });
+    res.json({ success: true, employees: employees.map(e => sanitizeEmployee(e, includePay)) });
   }
 });
 
 // GET single employee by ID or employeeId
-router.get('/:id', async (req: Request, res: Response) => {
+router.get('/:id', async (req: AuthenticatedRequest, res: Response) => {
   const { id } = req.params;
+  const userRole = (req.user?.role || '').toLowerCase();
+  const allowed = await canViewRoster(userRole);
+  if (!allowed) {
+    return res.status(403).json({ success: false, error: "Access Denied: You do not have permission to view staff details." });
+  }
+
+  const includePay = await canViewPayRates(userRole);
+
   try {
     const employee = await mySQLDb.getEmployeeById(String(id));
     if (!employee) {
       return res.status(404).json({ success: false, error: 'Employee not found' });
     }
-    res.json({ success: true, employee });
+    res.json({ success: true, employee: sanitizeEmployee(employee, includePay) });
   } catch (err) {
     const employees = db.getEmployees();
     const employee = employees.find(e => e.id === id || e.employeeId === id);
     if (!employee) {
       return res.status(404).json({ success: false, error: 'Employee not found' });
     }
-    res.json({ success: true, employee });
+    res.json({ success: true, employee: sanitizeEmployee(employee, includePay) });
   }
 });
 
 // POST create employee
-router.post('/', async (req: Request, res: Response) => {
+router.post('/', requirePermission('employees', 'create'), async (req: AuthenticatedRequest, res: Response) => {
   const body = req.body;
 
   let firstName = body.firstName || '';
@@ -117,7 +174,7 @@ router.post('/', async (req: Request, res: Response) => {
 });
 
 // PUT update employee
-router.put('/:id', async (req: Request, res: Response) => {
+router.put('/:id', requirePermission('employees', 'edit'), async (req: AuthenticatedRequest, res: Response) => {
   const { id } = req.params;
   const body = req.body;
   let firstName = body.firstName;
@@ -173,7 +230,7 @@ router.put('/:id', async (req: Request, res: Response) => {
 });
 
 // DELETE remove employee
-router.delete('/:id', async (req: Request, res: Response) => {
+router.delete('/:id', requirePermission('employees', 'delete'), async (req: AuthenticatedRequest, res: Response) => {
   const { id } = req.params;
   try {
     await mySQLDb.deleteEmployee(String(id));
@@ -187,7 +244,7 @@ router.delete('/:id', async (req: Request, res: Response) => {
 });
 
 // PATCH toggle employee status
-router.patch('/:id/toggle-status', async (req: Request, res: Response) => {
+router.patch('/:id/toggle-status', requirePermission('employees', 'edit'), async (req: AuthenticatedRequest, res: Response) => {
   const { id } = req.params;
   try {
     await mySQLDb.toggleEmployeeStatus(String(id));

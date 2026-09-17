@@ -58,7 +58,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/dashboard', requireAuth, requirePermission('dashboard'), dashboardRoutes);
 
 // Menu: "Employees" & "Staff Contact Details"
-app.use('/api/employees', requireAuth, requirePermission('employees'), employeesRoutes);
+app.use('/api/employees', requireAuth, employeesRoutes);
 app.use('/api/staff-contact-details', requireAuth, requirePermission('contacts'), staffContactDetailsRoutes);
 app.use('/api/contacts', requireAuth, requirePermission('contacts'), staffContactDetailsRoutes);
 
