@@ -1,5 +1,6 @@
 import express from 'express';
 import { mySQLDb } from '../db/mysqlDatabase';
+import { requireAuth, requireRole } from '../middleware/authMiddleware';
 
 const router = express.Router();
 
@@ -21,14 +22,14 @@ export const superAdminPermissions = {
 
 export const defaultAdminPermissions = {
   dashboard: { view: false }, // Strictly Super Admin Only
-  employees: { view: false, create: false, edit: false, delete: false }, // Strictly Super Admin Only (Pay Rates protected)
+  employees: { view: false, create: false, edit: false, delete: false }, // Controlled dynamically by superadmin
   contacts: { view: true, edit: true }, // Staff Contact Directory
   schedules: { view: true, edit: true, print: true, addNotes: true }, // Weekly Schedules & Staff Shift Matrix
   leave: { view: true, manage: true }, // Leave Calendars (Sick & Holiday)
   accounts: { view: true, edit: true }, // Customer Accounts, Invoices & Payments
   settings: { view: true, edit: true }, // Company Settings
   audit: { view: true, export: true }, // General Ledger & A/R Aging Reports
-  payroll: { view: false, edit: false, approve: false, export: false }, // Strictly REMOVED from Admin by default
+  payroll: { view: false, edit: false, approve: false, export: false }, // Strictly Super Admin by default
   reports: { view: false, export: false },
   payslips: { view: false, print: false, email: false },
   permissions: { view: false, edit: false }, // Strictly NO permissions administration
@@ -51,7 +52,7 @@ export const defaultStaffPermissions = {
   accounts: { view: false }
 };
 
-// GET /api/permissions
+// GET /api/permissions (Accessible to authenticated users so all roles can fetch their active permissions)
 router.get('/', async (req, res) => {
   try {
     const rawSaved = await mySQLDb.getSetting('role_permissions');
@@ -89,8 +90,8 @@ router.get('/', async (req, res) => {
   }
 });
 
-// POST or PUT /api/permissions
-router.post('/', async (req, res) => {
+// POST /api/permissions (Super Admin only)
+router.post('/', requireAuth, requireRole(['superadmin']), async (req, res) => {
   try {
     const { rolePermissions } = req.body;
     if (!rolePermissions || typeof rolePermissions !== 'object') {
@@ -119,7 +120,8 @@ router.post('/', async (req, res) => {
   }
 });
 
-router.put('/', async (req, res) => {
+// PUT /api/permissions (Super Admin only)
+router.put('/', requireAuth, requireRole(['superadmin']), async (req, res) => {
   try {
     const { rolePermissions } = req.body;
     const sanitizedPermissions = {
@@ -138,8 +140,8 @@ router.put('/', async (req, res) => {
   }
 });
 
-// POST /api/permissions/reset
-router.post('/reset', async (req, res) => {
+// POST /api/permissions/reset (Super Admin only)
+router.post('/reset', requireAuth, requireRole(['superadmin']), async (req, res) => {
   try {
     const defaultPermissions = {
       superadmin: superAdminPermissions,

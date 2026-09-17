@@ -102,12 +102,12 @@ app.use('/api/record-payment', requireAuth, requirePermission('accounts'), recor
 app.use('/api/payments', requireAuth, requirePermission('accounts'), recordPaymentRoutes);
 
 // Menu: "A/R Aging"
-app.use('/api/ar-aging', requireAuth, requirePermission('accounts'), arAgingRoutes);
-app.use('/api/aging', requireAuth, requirePermission('accounts'), arAgingRoutes);
+app.use('/api/ar-aging', requireAuth, requirePermission('audit'), arAgingRoutes);
+app.use('/api/aging', requireAuth, requirePermission('audit'), arAgingRoutes);
 
 // Menu: "General Ledger"
-app.use('/api/general-ledger', requireAuth, requirePermission('accounts'), generalLedgerRoutes);
-app.use('/api/ledger', requireAuth, requirePermission('accounts'), generalLedgerRoutes);
+app.use('/api/general-ledger', requireAuth, requirePermission('audit'), generalLedgerRoutes);
+app.use('/api/ledger', requireAuth, requirePermission('audit'), generalLedgerRoutes);
 
 // System Accounting & Email
 app.use('/api/email', requireAuth, requirePermission('accounts'), emailRoutes);
@@ -116,8 +116,8 @@ app.use('/api/accounting', requireAuth, requirePermission('accounts'), accountin
 // =======================================================
 // 3. ADMINISTRATION & SYSTEM REST APIS
 // =======================================================
-// Menu: "Permissions" (Super Admin Full Authority)
-app.use('/api/permissions', requireAuth, requireRole(['superadmin']), permissionsRoutes);
+// Menu: "Permissions" (GET for authenticated users, POST/PUT/Reset for Super Admin)
+app.use('/api/permissions', permissionsRoutes);
 
 // Menu: "User Accounts"
 app.use('/api/user-accounts', userAccountsRoutes);
