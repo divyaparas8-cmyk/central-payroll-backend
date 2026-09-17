@@ -204,11 +204,12 @@ class EmailService {
     .header h1 { margin: 0; font-size: 22px; letter-spacing: -0.5px; }
     .header p { margin: 6px 0 0 0; font-size: 13px; color: #94a3b8; }
     .content { padding: 24px; }
-    .invoice-badge { display: inline-block; background: #eef6ff; color: #1d4ed8; font-weight: 700; font-size: 12px; padding: 4px 10px; border-radius: 6px; margin-bottom: 12px; }
-    .amount-box { background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 10px; padding: 20px; text-align: center; margin: 20px 0; }
-    .amount-box span { font-size: 13px; font-weight: 600; color: #64748b; }
+    .invoice-badge { display: inline-block; background: #eef6ff; color: #1d4ed8; font-weight: 700; font-size: 12px; padding: 5px 12px; border-radius: 6px; margin-bottom: 16px; border: 1px solid #bfdbfe; }
+    .msg-body { font-size: 13.5px; line-height: 1.6; color: #334155; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin-bottom: 20px; white-space: pre-wrap; }
+    .amount-box { background: #ffffff; border: 2px solid #102a43; border-radius: 10px; padding: 20px; text-align: center; margin: 20px 0; }
+    .amount-box span { font-size: 12px; font-weight: 700; color: #64748b; letter-spacing: 0.05em; }
     .amount-box strong { display: block; font-size: 28px; font-weight: 900; color: #102a43; margin-top: 4px; }
-    .btn-pay { display: inline-block; background: #1d4ed8; color: #ffffff !important; font-weight: 700; font-size: 14px; padding: 12px 28px; border-radius: 8px; text-decoration: none; margin-top: 14px; }
+    .btn-pay { display: inline-block; background: #1d4ed8; color: #ffffff !important; font-weight: 800; font-size: 14px; padding: 12px 28px; border-radius: 8px; text-decoration: none; margin-top: 14px; }
     .footer { background: #f8fafc; padding: 18px; text-align: center; font-size: 11px; color: #64748b; border-top: 1px solid #e2e8f0; }
   </style>
 </head>
@@ -220,10 +221,11 @@ class EmailService {
     </div>
     <div class="content">
       <div class="invoice-badge">INVOICE #${options.invoiceNumber}</div>
-      <p>Dear <strong>${options.customerName}</strong>,</p>
-      <p>Please find attached your invoice details from Central Dispatch Limited.</p>
 
-      ${options.customMessage ? `<div style="background:#f8fafc; border:1px solid #cbd5e1; border-radius:8px; padding:14px; margin:16px 0; font-size:13px; white-space: pre-wrap; line-height: 1.5; color: #1e293b;">${options.customMessage.replace(/\n/g, '<br/>')}</div>` : ''}
+      ${options.customMessage 
+        ? `<div class="msg-body">${options.customMessage.replace(/\n/g, '<br/>')}</div>` 
+        : `<p>Dear <strong>${options.customerName}</strong>,</p><p>Please find attached your invoice details from Central Dispatch Limited.</p>`
+      }
 
       <div class="amount-box">
         <span>TOTAL AMOUNT DUE</span>
@@ -232,11 +234,11 @@ class EmailService {
         <a href="${payLink}" class="btn-pay" target="_blank">Pay Online Securely &rarr;</a>
       </div>
 
-      <p style="font-size: 12px; color: #64748b;">For payment inquiries or questions regarding this statement, please reach out to accounts@centraldispatch.bm or call (441) 295-4141.</p>
+      <p style="font-size: 12px; color: #64748b; text-align: center; margin-top: 16px;">For billing inquiries, please contact accounts@centraldispatch.bm or (441) 295-4141.</p>
     </div>
     <div class="footer">
       Central Dispatch Limited • 3 Laffan Street, Hamilton HM 09, Bermuda<br>
-      Customer Accounts & Billing Department
+      Automated Customer Billing & Dispatch Notification
     </div>
   </div>
 </body>
