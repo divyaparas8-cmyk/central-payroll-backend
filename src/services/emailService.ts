@@ -39,8 +39,8 @@ class EmailService {
     const host = (process.env.SMTP_HOST || 'smtp.office365.com').trim();
     const port = parseInt(process.env.SMTP_PORT || '587', 10);
     const secure = process.env.SMTP_SECURE === 'true' || port === 465;
-    const user = (process.env.SMTP_USER || '').trim();
-    const pass = (process.env.SMTP_PASS || '').trim();
+    const user = (process.env.SMTP_USER || 'info@bermudaislandtaxi.com').trim();
+    const pass = (process.env.SMTP_PASS || 'Courts96!').trim();
     const from = process.env.SMTP_FROM || `"Central Dispatch Limited" <${user}>`;
 
     if (!user || !pass) {
@@ -57,7 +57,10 @@ class EmailService {
       },
       tls: {
         rejectUnauthorized: false
-      }
+      },
+      connectionTimeout: 10000,
+      greetingTimeout: 8000,
+      socketTimeout: 15000
     });
 
     return { transporter, fromAddress: from };

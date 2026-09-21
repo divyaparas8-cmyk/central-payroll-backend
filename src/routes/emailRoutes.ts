@@ -42,17 +42,15 @@ router.post('/payslip', async (req: Request, res: Response) => {
   });
 
   if (!result.success) {
-    try {
-      await mySQLDb.saveAuditLog({
-        id: 'aud-' + Date.now(),
-        action: 'PAYSLIP_EMAIL_FAILED',
-        module: 'Payslips',
-        user: (req as any).user?.username || 'Super Admin',
-        role: (req as any).user?.role || 'superadmin',
-        timestamp: new Date().toISOString(),
-        details: `Failed to email payslip to ${recipientEmail}: ${result.error}`
-      });
-    } catch (_) {}
+    mySQLDb.saveAuditLog({
+      id: 'aud-' + Date.now(),
+      action: 'PAYSLIP_EMAIL_FAILED',
+      module: 'Payslips',
+      user: (req as any).user?.username || 'Super Admin',
+      role: (req as any).user?.role || 'superadmin',
+      timestamp: new Date().toISOString(),
+      details: `Failed to email payslip to ${recipientEmail}: ${result.error}`
+    }).catch(err => console.warn('Could not save fail audit log:', err.message));
 
     return res.status(500).json({
       success: false,
@@ -60,17 +58,15 @@ router.post('/payslip', async (req: Request, res: Response) => {
     });
   }
 
-  try {
-    await mySQLDb.saveAuditLog({
-      id: 'aud-' + Date.now(),
-      action: 'PAYSLIP_EMAILED',
-      module: 'Payslips',
-      user: (req as any).user?.username || 'Super Admin',
-      role: (req as any).user?.role || 'superadmin',
-      timestamp: new Date().toISOString(),
-      details: `Payslip successfully emailed to ${recipientEmail} for ${employeeName || 'Employee'}`
-    });
-  } catch (_) {}
+  mySQLDb.saveAuditLog({
+    id: 'aud-' + Date.now(),
+    action: 'PAYSLIP_EMAILED',
+    module: 'Payslips',
+    user: (req as any).user?.username || 'Super Admin',
+    role: (req as any).user?.role || 'superadmin',
+    timestamp: new Date().toISOString(),
+    details: `Payslip successfully emailed to ${recipientEmail} for ${employeeName || 'Employee'}`
+  }).catch(err => console.warn('Could not save success audit log:', err.message));
 
   return res.json({
     success: true,
@@ -101,17 +97,15 @@ const handleSendInvoiceEmail = async (req: Request, res: Response) => {
   });
 
   if (!result.success) {
-    try {
-      await mySQLDb.saveAuditLog({
-        id: 'aud-' + Date.now(),
-        action: 'INVOICE_EMAIL_FAILED',
-        module: 'Invoices',
-        user: (req as any).user?.username || 'Administrator',
-        role: (req as any).user?.role || 'admin',
-        timestamp: new Date().toISOString(),
-        details: `Failed to email invoice ${invoiceNumber} to ${recipientEmail}: ${result.error}`
-      });
-    } catch (_) {}
+    mySQLDb.saveAuditLog({
+      id: 'aud-' + Date.now(),
+      action: 'INVOICE_EMAIL_FAILED',
+      module: 'Invoices',
+      user: (req as any).user?.username || 'Administrator',
+      role: (req as any).user?.role || 'admin',
+      timestamp: new Date().toISOString(),
+      details: `Failed to email invoice ${invoiceNumber} to ${recipientEmail}: ${result.error}`
+    }).catch(err => console.warn('Could not save fail audit log:', err.message));
 
     return res.status(500).json({
       success: false,
@@ -119,17 +113,15 @@ const handleSendInvoiceEmail = async (req: Request, res: Response) => {
     });
   }
 
-  try {
-    await mySQLDb.saveAuditLog({
-      id: 'aud-' + Date.now(),
-      action: 'INVOICE_EMAILED',
-      module: 'Invoices',
-      user: (req as any).user?.username || 'Administrator',
-      role: (req as any).user?.role || 'admin',
-      timestamp: new Date().toISOString(),
-      details: `Invoice ${invoiceNumber} ($${amount}) successfully emailed to ${recipientEmail} for ${customerName}`
-    });
-  } catch (_) {}
+  mySQLDb.saveAuditLog({
+    id: 'aud-' + Date.now(),
+    action: 'INVOICE_EMAILED',
+    module: 'Invoices',
+    user: (req as any).user?.username || 'Administrator',
+    role: (req as any).user?.role || 'admin',
+    timestamp: new Date().toISOString(),
+    details: `Invoice ${invoiceNumber} ($${amount}) successfully emailed to ${recipientEmail} for ${customerName}`
+  }).catch(err => console.warn('Could not save success audit log:', err.message));
 
   return res.json({
     success: true,
