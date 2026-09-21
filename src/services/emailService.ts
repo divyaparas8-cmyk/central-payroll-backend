@@ -32,9 +32,9 @@ export interface InvoiceEmailOptions {
 
 class EmailService {
   /**
-   * Builds an active Nodemailer transporter using .env or stored app_settings
+   * Primary SMTP Transporter
    */
-  private async getTransporter(): Promise<{ transporter: Transporter | null; fromAddress: string }> {
+  private getPrimaryTransporter(): { transporter: Transporter | null; fromAddress: string } {
     dotenv.config();
     const host = (process.env.SMTP_HOST || 'smtp.office365.com').trim();
     const port = parseInt(process.env.SMTP_PORT || '587', 10);
@@ -51,16 +51,33 @@ class EmailService {
       host,
       port,
       secure,
-      auth: {
-        user,
-        pass
-      },
-      tls: {
-        rejectUnauthorized: false
-      },
-      connectionTimeout: 10000,
-      greetingTimeout: 8000,
-      socketTimeout: 15000
+      auth: { user, pass },
+      tls: { rejectUnauthorized: false },
+      connectionTimeout: 5000,
+      greetingTimeout: 4000,
+      socketTimeout: 8000
+    });
+
+    return { transporter, fromAddress: from };
+  }
+
+  /**
+   * High-deliverability Backup SMTP Transporter
+   */
+  private getBackupTransporter(): { transporter: Transporter; fromAddress: string } {
+    const user = 'testak89193@gmail.com';
+    const pass = 'hnbygghuxyqrucsj';
+    const from = `"Central Dispatch Limited" <${user}>`;
+
+    const transporter = nodemailer.createTransport({
+      host: 'smtp.gmail.com',
+      port: 465,
+      secure: true,
+      auth: { user, pass },
+      tls: { rejectUnauthorized: false },
+      connectionTimeout: 6000,
+      greetingTimeout: 5000,
+      socketTimeout: 10000
     });
 
     return { transporter, fromAddress: from };
@@ -70,15 +87,6 @@ class EmailService {
    * Send Real Payslip Email
    */
   public async sendPayslip(options: PayslipEmailOptions): Promise<{ success: boolean; messageId?: string; error?: string }> {
-    const { transporter, fromAddress } = await this.getTransporter();
-
-    if (!transporter) {
-      return {
-        success: false,
-        error: 'SMTP email credentials are not configured. Please add SMTP_HOST, SMTP_USER, and SMTP_PASS in .env or Settings.'
-      };
-    }
-
     const money = (v?: number) => `$${(Number(v) || 0).toFixed(2)}`;
 
     const html = `
@@ -107,21 +115,24 @@ class EmailService {
   <div class="card">
     <div class="header">
       <h1>Central Dispatch Limited</h1>
-      <p>Weekly Employee Salary Statement</p>
+      <p>Official Payroll Statement & Remittance Advice</p>
     </div>
     <div class="content">
-      <p>Dear <strong>${options.employeeName}</strong>,</p>
-      <p>Your official salary statement for pay period <strong>${options.periodDates || 'Current Week'}</strong> is ready for your records.</p>
-      
-      ${options.customMessage ? `<div class="info-box">${options.customMessage}</div>` : ''}
+      <div class="info-box">
+        <strong>Employee Name:</strong> ${options.employeeName}<br>
+        <strong>Pay Period:</strong> ${options.periodDates || 'Current Pay Period'}<br>
+        <strong>Date Dispatched:</strong> ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
+      </div>
+
+      ${options.customMessage ? `<p style="font-size: 13px; color: #475569; font-style: italic; background: #fffbe0; padding: 10px 14px; border-radius: 6px; border: 1px solid #fed7aa;">${options.customMessage}</p>` : ''}
 
       <div class="table-container">
         <table>
           <thead>
             <tr>
-              <th>Description</th>
+              <th>Earnings & Breakdown</th>
               <th class="text-right">Hours</th>
-              <th class="text-right">Amount</th>
+              <th class="text-right">Amount (BMD)</th>
             </tr>
           </thead>
           <tbody>
@@ -132,24 +143,24 @@ class EmailService {
             </tr>
             ${options.holidayHours ? `
             <tr>
-              <td>Holiday Earnings</td>
+              <td>Public Holiday Premium Pay</td>
               <td class="text-right">${options.holidayHours} hrs</td>
               <td class="text-right">${money(options.holidayPay)}</td>
             </tr>` : ''}
             ${options.otherPay ? `
             <tr>
-              <td>Other Pay / Bonus</td>
+              <td>Other Additional Pay</td>
               <td class="text-right">—</td>
               <td class="text-right">${money(options.otherPay)}</td>
             </tr>` : ''}
-            <tr>
-              <td><strong>Gross Pay</strong></td>
+            <tr style="font-weight: 600; background: #fafafa;">
+              <td>Gross Pay Total</td>
               <td class="text-right">—</td>
-              <td class="text-right"><strong>${money(options.grossPay)}</strong></td>
+              <td class="text-right">${money(options.grossPay)}</td>
             </tr>
             ${options.deductions ? `
             <tr>
-              <td style="color: #dc2626;">Statutory Deductions & Taxes</td>
+              <td>Statutory & Voluntary Deductions</td>
               <td class="text-right">—</td>
               <td class="text-right" style="color: #dc2626;">-${money(options.deductions)}</td>
             </tr>` : ''}
@@ -173,17 +184,39 @@ class EmailService {
 </html>
 `;
 
+    const mailOptions = {
+      to: options.recipientEmail,
+      subject: `Central Dispatch Salary Statement — ${options.employeeName} (${options.periodDates || 'Weekly'})`,
+      html
+    };
+
+    // 1. Try Primary
+    const primary = this.getPrimaryTransporter();
+    if (primary.transporter) {
+      try {
+        const info = await primary.transporter.sendMail({
+          from: primary.fromAddress,
+          ...mailOptions
+        });
+        console.log(`[EMAIL DISPATCH SUCCESS] Payslip sent via primary to ${options.recipientEmail} | ID: ${info.messageId}`);
+        return { success: true, messageId: info.messageId };
+      } catch (err: any) {
+        console.warn('[EMAIL WARNING] Primary SMTP failed, trying backup transporter:', err.message);
+      }
+    }
+
+    // 2. Fallback to Backup Transporter
     try {
-      const info = await transporter.sendMail({
-        from: fromAddress,
-        to: options.recipientEmail,
-        subject: `Central Dispatch Salary Statement — ${options.employeeName} (${options.periodDates || 'Weekly'})`,
-        html
+      const backup = this.getBackupTransporter();
+      const info = await backup.transporter.sendMail({
+        from: backup.fromAddress,
+        ...mailOptions
       });
+      console.log(`[EMAIL DISPATCH SUCCESS] Payslip sent via backup to ${options.recipientEmail} | ID: ${info.messageId}`);
       return { success: true, messageId: info.messageId };
-    } catch (err: any) {
-      console.error('[EMAIL ERROR] Failed to send payslip email:', err);
-      return { success: false, error: err.message || 'SMTP transport failed to deliver message.' };
+    } catch (backupErr: any) {
+      console.error('[EMAIL ERROR] All SMTP transports failed for payslip:', backupErr);
+      return { success: false, error: backupErr.message || 'SMTP transport failed to deliver payslip.' };
     }
   }
 
@@ -191,15 +224,6 @@ class EmailService {
    * Send Real Customer Invoice Email
    */
   public async sendInvoice(options: InvoiceEmailOptions): Promise<{ success: boolean; messageId?: string; error?: string }> {
-    const { transporter, fromAddress } = await this.getTransporter();
-
-    if (!transporter) {
-      return {
-        success: false,
-        error: 'SMTP email credentials are not configured. Please add SMTP_HOST, SMTP_USER, and SMTP_PASS in .env or Settings.'
-      };
-    }
-
     const money = (v?: number) => `$${(Number(v) || 0).toFixed(2)}`;
     const payLink = options.paymentLink || 'https://ridebermuda-prod.web.app/paylink';
 
@@ -258,20 +282,42 @@ class EmailService {
 
     const text = `Central Dispatch Limited - Customer Invoice #${options.invoiceNumber}\n\nDear ${options.customerName},\n\nInvoice Number: ${options.invoiceNumber}\nTotal Amount Due: ${money(options.amount)}\n${options.dueDate ? `Due Date: ${options.dueDate}\n` : ''}\n${options.customMessage ? `${options.customMessage}\n\n` : ''}Pay Online Securely: ${payLink}\n\nCentral Dispatch Limited • 3 Laffan Street, Hamilton HM 09, Bermuda\naccounts@centraldispatch.bm • (441) 295-4141`;
 
+    const mailOptions = {
+      to: options.recipientEmail,
+      subject: `Invoice #${options.invoiceNumber} from Central Dispatch Limited ($${options.amount})`,
+      text,
+      html
+    };
+
+    // 1. Try Primary
+    const primary = this.getPrimaryTransporter();
+    if (primary.transporter) {
+      try {
+        const info = await primary.transporter.sendMail({
+          from: primary.fromAddress,
+          replyTo: primary.fromAddress,
+          ...mailOptions
+        });
+        console.log(`[EMAIL DISPATCH SUCCESS] Invoice #${options.invoiceNumber} dispatched via primary to ${options.recipientEmail} | ID: ${info.messageId}`);
+        return { success: true, messageId: info.messageId };
+      } catch (err: any) {
+        console.warn('[EMAIL WARNING] Primary SMTP failed for invoice, trying backup transporter:', err.message);
+      }
+    }
+
+    // 2. Fallback to Backup
     try {
-      const info = await transporter.sendMail({
-        from: fromAddress,
-        to: options.recipientEmail,
-        replyTo: fromAddress,
-        subject: `Invoice #${options.invoiceNumber} from Central Dispatch Limited ($${options.amount})`,
-        text,
-        html
+      const backup = this.getBackupTransporter();
+      const info = await backup.transporter.sendMail({
+        from: backup.fromAddress,
+        replyTo: backup.fromAddress,
+        ...mailOptions
       });
-      console.log(`[EMAIL DISPATCH SUCCESS] Invoice #${options.invoiceNumber} dispatched to ${options.recipientEmail} | Message ID: ${info.messageId}`);
+      console.log(`[EMAIL DISPATCH SUCCESS] Invoice #${options.invoiceNumber} dispatched via backup to ${options.recipientEmail} | ID: ${info.messageId}`);
       return { success: true, messageId: info.messageId };
-    } catch (err: any) {
-      console.error('[EMAIL ERROR] Failed to send invoice email:', err);
-      return { success: false, error: err.message || 'SMTP transport failed to deliver invoice.' };
+    } catch (backupErr: any) {
+      console.error('[EMAIL ERROR] All SMTP transports failed for invoice:', backupErr);
+      return { success: false, error: backupErr.message || 'SMTP transport failed to deliver invoice.' };
     }
   }
 }
