@@ -84,14 +84,14 @@ export function requirePermission(moduleName: string, action: string = 'view') {
       return next(); // Superadmin always has full authority
     }
 
-    try {
-      // Fetch dynamic role permissions from DB
-      const rawSaved = await mySQLDb.getSetting('role_permissions');
-      let rolePermissions: any = {
-        admin: defaultAdminPermissions,
-        staff: defaultStaffPermissions
-      };
+    let rolePermissions: any = {
+      admin: defaultAdminPermissions,
+      staff: defaultStaffPermissions
+    };
 
+    try {
+      // Fetch dynamic role permissions from DB if available
+      const rawSaved = await mySQLDb.getSetting('role_permissions');
       if (rawSaved) {
         try {
           const parsed = JSON.parse(rawSaved);
@@ -103,20 +103,20 @@ export function requirePermission(moduleName: string, action: string = 'view') {
           }
         } catch (_) {}
       }
-
-      const userPerms = rolePermissions[userRole] || {};
-      const modulePerms = userPerms[moduleName];
-
-      if (modulePerms && (modulePerms[action] === true || (action === 'view' && modulePerms.view === true))) {
-        return next();
-      }
-
-      return res.status(403).json({
-        success: false,
-        error: `Forbidden: Role '${req.user.role}' does not have '${action}' permission for module '${moduleName}'.`
-      });
     } catch (err: any) {
-      return res.status(500).json({ success: false, error: err.message });
+      console.warn('DB unavailable for permissions check, using in-memory defaults:', err.message);
     }
+
+    const userPerms = rolePermissions[userRole] || {};
+    const modulePerms = userPerms[moduleName];
+
+    if (modulePerms && (modulePerms[action] === true || (action === 'view' && modulePerms.view === true))) {
+      return next();
+    }
+
+    return res.status(403).json({
+      success: false,
+      error: `Forbidden: Role '${req.user.role}' does not have '${action}' permission for module '${moduleName}'.`
+    });
   };
 }

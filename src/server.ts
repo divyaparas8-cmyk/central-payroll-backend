@@ -110,7 +110,7 @@ app.use('/api/general-ledger', requireAuth, requirePermission('audit'), generalL
 app.use('/api/ledger', requireAuth, requirePermission('audit'), generalLedgerRoutes);
 
 // System Accounting & Email
-app.use('/api/email', requireAuth, requirePermission('accounts'), emailRoutes);
+app.use('/api/email', requireAuth, emailRoutes);
 app.use('/api/accounting', requireAuth, requirePermission('accounts'), accountingRoutes);
 
 // =======================================================
