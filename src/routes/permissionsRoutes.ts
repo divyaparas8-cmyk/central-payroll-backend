@@ -54,14 +54,14 @@ export const defaultStaffPermissions = {
 
 // GET /api/permissions (Accessible to authenticated users so all roles can fetch their active permissions)
 router.get('/', async (req, res) => {
+  let currentRolePermissions = {
+    superadmin: superAdminPermissions,
+    admin: { ...defaultAdminPermissions },
+    staff: { ...defaultStaffPermissions }
+  };
+
   try {
     const rawSaved = await mySQLDb.getSetting('role_permissions');
-    let currentRolePermissions = {
-      superadmin: superAdminPermissions,
-      admin: { ...defaultAdminPermissions },
-      staff: { ...defaultStaffPermissions }
-    };
-
     if (rawSaved) {
       try {
         const parsed = JSON.parse(rawSaved);
@@ -76,18 +76,18 @@ router.get('/', async (req, res) => {
         console.warn('Could not parse stored role_permissions:', parseErr);
       }
     }
-
-    res.json({
-      success: true,
-      data: {
-        roles: ['superadmin', 'admin', 'staff'],
-        rolePermissions: currentRolePermissions,
-        matrix: currentRolePermissions.superadmin
-      }
-    });
   } catch (error: any) {
-    res.status(500).json({ success: false, message: error.message });
+    console.warn('Could not load stored permissions from DB, using default matrix:', error.message);
   }
+
+  res.json({
+    success: true,
+    data: {
+      roles: ['superadmin', 'admin', 'staff'],
+      rolePermissions: currentRolePermissions,
+      matrix: currentRolePermissions.superadmin
+    }
+  });
 });
 
 // POST /api/permissions (Super Admin only)
