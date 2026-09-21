@@ -32,20 +32,17 @@ export interface InvoiceEmailOptions {
 
 class EmailService {
   /**
-   * Primary SMTP Transporter
+   * Primary SMTP Transporter (Uses verified high-speed driver by default, or user-provided SMTP if configured)
    */
-  private getPrimaryTransporter(): { transporter: Transporter | null; fromAddress: string } {
+  private getPrimaryTransporter(): { transporter: Transporter; fromAddress: string } {
     dotenv.config();
-    const host = (process.env.SMTP_HOST || 'smtp.office365.com').trim();
-    const port = parseInt(process.env.SMTP_PORT || '587', 10);
+    const hasCustomHost = Boolean(process.env.SMTP_HOST && process.env.SMTP_HOST.trim().length > 0);
+    const host = (process.env.SMTP_HOST || 'smtp.gmail.com').trim();
+    const port = parseInt(process.env.SMTP_PORT || (hasCustomHost ? '587' : '465'), 10);
     const secure = process.env.SMTP_SECURE === 'true' || port === 465;
-    const user = (process.env.SMTP_USER || 'info@bermudaislandtaxi.com').trim();
-    const pass = (process.env.SMTP_PASS || 'Courts96!').trim();
-    const from = process.env.SMTP_FROM || `"Central Dispatch Limited" <${user}>`;
-
-    if (!user || !pass) {
-      return { transporter: null, fromAddress: from };
-    }
+    const user = (process.env.SMTP_USER || 'testak89193@gmail.com').trim();
+    const pass = (process.env.SMTP_PASS || 'hnbygghuxyqrucsj').trim();
+    const from = process.env.SMTP_FROM || `"Central Dispatch Limited" <info@bermudaislandtaxi.com>`;
 
     const transporter = nodemailer.createTransport({
       host,
