@@ -36,18 +36,21 @@ class EmailService {
    */
   private async getTransporter(): Promise<{ transporter: Transporter | null; fromAddress: string }> {
     dotenv.config();
-    let user = (process.env.SMTP_USER || 'testak89193@gmail.com').trim();
-    let pass = (process.env.SMTP_PASS || 'hnbygghuxyqrucsj').replace(/\s+/g, '');
-    let from = `"Central Dispatch" <${user}>`;
+    const host = (process.env.SMTP_HOST || 'smtp.office365.com').trim();
+    const port = parseInt(process.env.SMTP_PORT || '587', 10);
+    const secure = process.env.SMTP_SECURE === 'true' || port === 465;
+    const user = (process.env.SMTP_USER || '').trim();
+    const pass = (process.env.SMTP_PASS || '').trim();
+    const from = process.env.SMTP_FROM || `"Central Dispatch Limited" <${user}>`;
 
     if (!user || !pass) {
       return { transporter: null, fromAddress: from };
     }
 
     const transporter = nodemailer.createTransport({
-      host: 'smtp.gmail.com',
-      port: 465,
-      secure: true,
+      host,
+      port,
+      secure,
       auth: {
         user,
         pass
