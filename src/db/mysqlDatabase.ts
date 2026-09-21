@@ -20,14 +20,21 @@ dotenv.config();
 
 const connectionUri = process.env.DATABASE_URL || process.env.MYSQL_URL || process.env.MYSQL_PUBLIC_URL;
 const pool = connectionUri 
-  ? mysql.createPool(connectionUri)
+  ? mysql.createPool({
+      uri: connectionUri,
+      connectTimeout: 3000,
+      waitForConnections: false,
+      connectionLimit: 10,
+      queueLimit: 0
+    })
   : mysql.createPool({
       host: process.env.DB_HOST || process.env.MYSQLHOST || process.env.MYSQL_HOST || '127.0.0.1',
       port: Number(process.env.DB_PORT || process.env.MYSQLPORT || process.env.MYSQL_PORT) || 3307,
       user: process.env.DB_USER || process.env.MYSQLUSER || process.env.MYSQL_USER || 'root',
       password: process.env.DB_PASSWORD || process.env.MYSQLPASSWORD || process.env.MYSQL_PASSWORD || '',
       database: process.env.DB_NAME || process.env.MYSQLDATABASE || process.env.MYSQL_DATABASE || 'payroll_db',
-      waitForConnections: true,
+      connectTimeout: 3000,
+      waitForConnections: false,
       connectionLimit: 10,
       queueLimit: 0
     });
