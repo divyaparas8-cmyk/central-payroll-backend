@@ -104,11 +104,20 @@ async function seedDemoClinicAndStaff() {
     console.log('4. Receptionist:  demo.receptionist@petcare.com');
     console.log('5. Vet Assistant: demo.assistant@petcare.com');
     console.log('--------------------------------------------------\n');
-    process.exit(0);
+    if (require.main === module) {
+      process.exit(0);
+    }
   } catch (err) {
     console.error('❌ Error seeding demo users:', err);
-    process.exit(1);
+    if (require.main === module) {
+      process.exit(1);
+    }
   }
 }
 
-seedDemoClinicAndStaff();
+if (require.main === module) {
+  seedDemoClinicAndStaff();
+}
+
+module.exports = { seedDemoClinicAndStaff };
+

@@ -153,6 +153,14 @@ app.use(errorHandler);
 app.listen(port, () => {
     console.log(`Server running on port ${port}`);
 
+    // Auto-seed Demo Clinic & Users on startup
+    try {
+        const { seedDemoClinicAndStaff } = require('./seed_demo_users');
+        seedDemoClinicAndStaff().catch(e => console.error('Seed demo users failed:', e.message));
+    } catch (err) {
+        console.error('Failed to trigger demo user seeding:', err.message);
+    }
+
     // Start Cron Jobs
     try {
         const { startCron } = require('./cron/subscriptionCron');
