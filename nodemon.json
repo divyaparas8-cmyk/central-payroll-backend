@@ -1,0 +1,20 @@
+{
+  "ignore": [
+    "whatsapp_sessions/*",
+    "whatsapp_sessions/**/*",
+    "uploads/*",
+    "database/backups/*",
+    "*.log"
+  ],
+  "watch": [
+    "server.js",
+    "controllers/",
+    "routes/",
+    "services/",
+    "models/",
+    "middleware/",
+    "config/",
+    "cron/"
+  ],
+  "ext": "js,json"
+}

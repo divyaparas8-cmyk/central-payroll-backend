@@ -61,8 +61,21 @@ const { subscriptionMiddleware } = require('./middlewares/subscriptionMiddleware
 const { auditPerformanceMiddleware } = require('./middlewares/auditMiddleware');
 app.use(auditPerformanceMiddleware);
 
-// Serve static files from uploads directory
+const fs = require('fs');
+
+// Serve static files from uploads and public directories
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use(express.static(path.join(__dirname, 'public')));
+
+// Direct APK Download Endpoint
+app.get('/api/v1/system/download-apk', (req, res) => {
+    const apkPath = path.join(__dirname, 'public', 'PetCare_Veterinary.apk');
+    if (fs.existsSync(apkPath)) {
+        res.download(apkPath, 'PetCare_Veterinary.apk');
+    } else {
+        res.status(404).json({ status: 'error', message: 'APK file not found on server' });
+    }
+});
 
 // Routes
 const authRoutes = require('./routes/authRoutes');
@@ -155,5 +168,14 @@ app.listen(port, () => {
         console.log('✅ Weekly 7-day report cron started (7-day interval)');
     } catch (err) {
         console.error('Failed to start weekly report cron:', err.message);
+    }
+
+    // Restore active WhatsApp Web Sessions
+    try {
+        const { restoreSessionsOnStartup } = require('./services/whatsappService');
+        restoreSessionsOnStartup();
+        console.log('✅ WhatsApp session restorer initialized');
+    } catch (err) {
+        console.error('Failed to restore WhatsApp sessions:', err.message);
     }
 });

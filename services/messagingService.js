@@ -41,6 +41,16 @@ async function getMessagingConfig() {
 
 // Core WhatsApp Dispatcher
 async function sendWhatsApp({ to, message, templateType = 'custom', clinicId = null, recipientName = 'Valued Pet Parent' }) {
+    const whatsappService = require('./whatsappService');
+    
+    // First attempt sending via live connected WhatsApp Web QR session if active for clinic
+    if (clinicId) {
+        const waStatus = await whatsappService.getStatus(clinicId);
+        if (waStatus && waStatus.status === 'CONNECTED') {
+            return await whatsappService.sendMessage(clinicId, to, message, recipientName);
+        }
+    }
+
     const config = await getMessagingConfig();
     const logId = crypto.randomUUID();
     let status = 'Sent';

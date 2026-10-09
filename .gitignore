@@ -1,5 +1,7 @@
 node_modules/
 .env
+whatsapp_sessions/
+uploads/
 *.zip
 *.log
 .DS_Store

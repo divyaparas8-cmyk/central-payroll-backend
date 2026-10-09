@@ -20,6 +20,10 @@ const crypto = require('crypto');
  */
 async function ensureTables() {
     try {
+        const [cols] = await db.query(`SHOW COLUMNS FROM scheduled_reports LIKE 'attempt_count'`).catch(() => [[]]);
+        if (!cols || cols.length === 0) {
+            await db.query(`DROP TABLE IF EXISTS scheduled_reports`);
+        }
         await db.query(`
             CREATE TABLE IF NOT EXISTS scheduled_reports (
                 id VARCHAR(64) PRIMARY KEY,
