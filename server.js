@@ -6,7 +6,7 @@ require('dotenv').config();
 
 const app = express();
 app.set('trust proxy', 1);
-const port = 5002;
+const port = process.env.PORT || 5002;
 
 // Security Headers
 app.use(helmet({
@@ -134,6 +134,11 @@ app.use('/api/super-admin', superAdminRoutes);
 app.use('/api/payment', paymentLimiter, paymentRoutes);
 app.use('/api/v1/payment', paymentLimiter, paymentRoutes);
 
+// Root Health Check
+app.get('/', (req, res) => {
+    res.status(200).json({ status: 'ok', message: 'Veterinary SaaS Backend is live' });
+});
+
 // Health check
 app.get('/api/health', async (req, res) => {
     try {
@@ -150,7 +155,7 @@ app.get('/api/health', async (req, res) => {
 app.use(errorHandler);
 
 // Start Server
-app.listen(port, () => {
+app.listen(port, '0.0.0.0', () => {
     console.log(`Server running on port ${port}`);
 
     // Auto-seed Demo Clinic & Users on startup
