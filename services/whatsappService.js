@@ -1,4 +1,23 @@
-const { makeWASocket, useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion, Browsers } = require('@whiskeysockets/baileys');
+// Dynamic loader for @whiskeysockets/baileys (pure ESM package)
+let baileysPromise = null;
+function getBaileys() {
+    if (!baileysPromise) {
+        baileysPromise = import('@whiskeysockets/baileys').then(baileys => ({
+            makeWASocket: baileys.default || baileys.makeWASocket,
+            useMultiFileAuthState: baileys.useMultiFileAuthState,
+            DisconnectReason: baileys.DisconnectReason,
+            fetchLatestBaileysVersion: baileys.fetchLatestBaileysVersion,
+            Browsers: baileys.Browsers
+        }));
+    }
+    return baileysPromise;
+}
+
+// Pre-load in background
+getBaileys().catch(err => {
+    console.error('[WhatsAppService] Error loading Baileys ESM module:', err.message);
+});
+
 const QRCode = require('qrcode');
 const path = require('path');
 const fs = require('fs');
@@ -75,6 +94,7 @@ async function updateDbStatus(clinicId, status, phoneNumber = null, qrCode = nul
  */
 async function startWhatsAppConnection(clinicId, inputPhone = null, mode = 'qr', isAutoReconnect = false) {
     try {
+        const { makeWASocket, useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion, Browsers } = await getBaileys();
         const canonicalPhone = inputPhone ? normalizePhoneNumber(inputPhone) : null;
         console.log(`[WhatsAppService] Starting WhatsApp connection for clinic: ${clinicId} (Mode: ${mode}, AutoReconnect: ${isAutoReconnect})`);
         
